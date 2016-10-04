@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block title %}首页{% endblock %}
+{% block content %}
+<h1>Homepage Placeholder</h1>
+
+{% if session.user_id %}
+user info:
+<ul>
+    <li>user_id: {{session.user_id}}</li>
+    <li>user_name: {{session.user_name}}</li>
+    <li>user_category: {{session.user_category}}</li>
+</ul>
+{% else %}
+not login yet
+{% endif %}
+
+
+actions:
+<ul>
+    <li><a href="/login">login</a></li>
+    <li><a href="/logout">logout</a></li>
+</ul>
+{% endblock %}
