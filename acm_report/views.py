@@ -83,7 +83,7 @@ def post_login():
         url=url)
     email_queue.send(email, settings.EMAIL_TMPL_LOGIN_SUBJECT, content)
 
-    return render_template('login_verification.html', user=user)
+    return render_template('login_verify.html', user=user)
 
 
 @app.route('/login/vericode/<vericode>')
@@ -117,3 +117,45 @@ def get_logout():
     unset_session_user()
     flash('您已成功登出', 'success')
     return redirect(url_for('get_homepage'))
+
+
+@app.route('/user/modify')
+@login_required
+def get_user_modify():
+    user = db_session.query(User).filter(User.id == session['user_id']).first()
+    if not user:
+        flash('找不到该用户，请重新登入', 'warning')
+        unset_session_user()
+        return redirect(url_for('get_login'))
+    return render_template('user_modify.html', user=user)
+
+
+@app.route('/user/modify', methods=['POST'])
+@login_required
+def post_user_modify():
+    id = request.form.get('id', None)
+    if not id:
+        flash('找不到该用户ID', 'warning')
+        return redirect(url_for('get_user_modify'))
+    user = db_session.query(User).filter(User.id == session['user_id']).first()
+    if not user:
+        flash('找不到该用户', 'warning')
+        return redirect(url_for('get_user_modify'))
+
+    stuid = request.form.get('stuid', user.stuid)
+    name = request.form.get('name', user.name)
+    pinyin = request.form.get('pinyin', user.pinyin)
+    email = request.form.get('email', user.email)
+    category = request.form.get('category', user.category)
+    dropped = 'dropped' in request.form
+    allow_login = 'allow_login' in request.form
+
+    # TODO: allow priviledged user to modify more info
+    user.pinyin = pinyin
+    user.email = email
+    db_session.commit()
+    set_session_user(user)
+    flash('修改成功', 'success')
+
+    print(id, stuid, name, pinyin, email, category, dropped, allow_login)  # to please flake8
+    return render_template('user_modify.html', user=user)

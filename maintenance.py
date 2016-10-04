@@ -40,7 +40,8 @@ def create_admin():
                        stuid=stuid,
                        email=email,
                        category=category,
-                       dropped=False)
+                       dropped=False,
+                       allow_login=True)
     db.db_session.add(user)
     db.db_session.commit()
     print('done!')

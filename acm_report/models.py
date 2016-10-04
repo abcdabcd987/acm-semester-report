@@ -35,6 +35,7 @@ class User(Base):
     email = Column(String, unique=True)
     category = Column(String, nullable=False)
     dropped = Column(Boolean, nullable=False)
+    allow_login = Column(Boolean, nullable=False)
 
 
 class LoginVerification(Base):
