@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import pytz
 import uuid
 import functools
 import pypinyin
@@ -10,6 +11,7 @@ from acm_report.models import *
 from acm_report.database import db_session
 import acm_report.email_queue as email_queue
 import acm_report.settings as settings
+import acm_report.utils as utils
 
 
 def login_required(f):
@@ -75,8 +77,7 @@ def post_login():
     db_session.add(lv)
     db_session.commit()
 
-    date = settings.TIMEZONE.fromutc(lv.created_at.replace(tzinfo=settings.TIMEZONE))
-    date = date.strftime('%Y-%m-%d %H:%M:%S')
+    date = utils.format_from_utc(lv.created_at)
     url = url_for('get_login_vericode', vericode=vericode)
     content = settings.EMAIL_TMPL_LOGIN_CONTENT.format(
         name=user.name,
@@ -209,3 +210,53 @@ def post_manage_batch_add_users():
     session['manage_batch_add_users_status'] = 2
     session['manage_batch_add_users_users'] = user_dicts
     return redirect(url_for('get_manage_batch_add_users'))
+
+
+@app.route('/task/new')
+@login_required
+def get_task_new():
+    title = session.pop('get_task_new_title', '')
+    deadline = session.pop('get_task_new_title', '')
+    return render_template('task_edit_basic_info.html', title=title, deadline=deadline)
+
+
+@app.route('/task/new', methods=["POST"])
+@login_required
+def post_task_new():
+    title = request.form.get('title', '').strip()
+    deadline = request.form.get('deadline', '').strip()
+    err = None
+    try:
+        deadline = utils.parse_datetime(deadline)
+        deadline = utils.local_to_utc(deadline)
+    except:
+        err = '截止日期格式不正确'
+    if not title:
+        err = '标题不能为空'
+    if err:
+        flash(err, 'warning')
+        session['get_task_new_title'] = title
+        session['get_task_new_deadline'] = request.form.get('deadline', '').strip()
+        return redirect(url_for('get_task_new'))
+    task = Task(title=title, deadline=deadline)
+    db_session.add(task)
+    db_session.commit()
+    return redirect(url_for('get_task_info', id=task.id))
+
+
+@app.route('/task/list')
+@login_required
+def get_task_list():
+    tasks = db_session.query(Task).order_by(Task.id.desc()).all()
+    return render_template('task_list.html', tasks=tasks)
+
+
+@app.route('/task/<int:id>/info')
+@login_required
+def get_task_info(id):
+    task = db_session.query(Task).filter(Task.id == id).first()
+    if not task:
+        flash('找不到该任务', 'warning')
+        return redirect(url_for('get_task_list'))
+    # return render_template('task_info.html', task=task)
+    return '{0.id}, {0.title}, utc{0.deadline}'.format(task)

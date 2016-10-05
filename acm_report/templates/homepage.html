@@ -17,12 +17,21 @@ not login yet
 
 actions:
 <ul>
-    <li><a href="/login">login</a></li>
-    <li><a href="/logout">logout</a></li>
-    <li><a href="/user/modify">modify user</a></li>
+    <li>user</li>
+    <ul>
+        <li><a href="/login">login</a></li>
+        <li><a href="/logout">logout</a></li>
+        <li><a href="/user/modify">modify user</a></li>
+    </ul>
+    <li>task</li>
+    <ul>
+        <li><a href="/task/new">new</a></li>
+        <li><a href="/task/list">list</a></li>
+    </ul>
     <li>manage</li>
     <ul>
         <li><a href="/manage/batch-add-users">batch add users</a></li>
+        <li><a href="/manage/assign-task/step1">assign task</a></li>
     </ul>
 </ul>
 {% endblock %}
