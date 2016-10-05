@@ -163,6 +163,40 @@ def post_user_modify():
     return render_template('user_modify.html', user=user)
 
 
+@app.route('/user/list')
+@login_required
+def get_user_list():
+    id = request.args.get('id', '')
+    stuid = request.args.get('stuid', '')
+    name = request.args.get('name', '')
+    category = request.args.get('category', 'None')
+    dropped = request.args.get('dropped', '')
+    allow_login = request.args.get('allow_login', '')
+    dropped = dropped == 'True' if dropped in ['True', 'False'] else None
+    allow_login = allow_login == 'True' if allow_login in ['True', 'False'] else None
+
+    query = db_session.query(User)
+    try:
+        id = int(id)
+        query = query.filter(User.id == id)
+    except:
+        pass
+    if stuid:
+        query = query.filter(User.stuid == stuid)
+    if name:
+        query = query.filter(User.name == name)
+    if category != 'None':
+        query = query.filter(User.category == category)
+    if dropped is not None:
+        query = query.filter(User.dropped.is_(dropped))
+    if allow_login is not None:
+        query = query.filter(User.allow_login.is_(dropped))
+
+    users = query.order_by(User.id.desc()).all()
+    categories = db_session.query(User.category).distinct().all()
+    return render_template('user_list.html', users=users, categories=categories)
+
+
 @app.route('/manage/batch-add-users')
 @login_required
 def get_manage_batch_add_users():
@@ -258,5 +292,4 @@ def get_task_info(id):
     if not task:
         flash('找不到该任务', 'warning')
         return redirect(url_for('get_task_list'))
-    # return render_template('task_info.html', task=task)
-    return '{0.id}, {0.title}, utc{0.deadline}'.format(task)
+    return render_template('task_info.html', task=task)

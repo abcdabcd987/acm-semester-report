@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block title %}{{task.title}} - 任务信息{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{task.title}} <small>任务信息</small></h1>
+</div>
+<dl class="dl-horizontal">
+  <dt>截止日期</dt>
+  <dd>{{task.deadline | format_from_utc}}</dd>
+</dl>
+
+{% endblock %}

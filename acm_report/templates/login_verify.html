@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page_header">
 <h1>登入验证邮件已发送</h1>
-<p>请前往邮箱<code>{{ user.email }}</code>检查是否收到登入验证邮件，并在<strong>当前</strong>浏览器中打开验证链接。</p>
+<p>请前往邮箱<code>{{ user.email }}</code>检查是否收到登入验证邮件，并在<mark><strong>当前</strong></mark>浏览器中打开验证链接。</p>
 <p>如果没有收到，您可以检查垃圾邮件，或者再次<a href="{{ url_for('get_login') }}">尝试再次登入</a>。<p>
 </div>
 
