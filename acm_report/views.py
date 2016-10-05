@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 import uuid
 import functools
+import pypinyin
 from datetime import datetime
 from flask import request, redirect, session, url_for, flash, render_template
 from acm_report import app
@@ -159,3 +160,52 @@ def post_user_modify():
 
     print(id, stuid, name, pinyin, email, category, dropped, allow_login)  # to please flake8
     return render_template('user_modify.html', user=user)
+
+
+@app.route('/manage/batch-add-users')
+@login_required
+def get_manage_batch_add_users():
+    status = session.pop('manage_batch_add_users_status', 0)
+    users = session.pop('manage_batch_add_users_users', [])
+    return render_template('manage_batch_add_users.html', status=status, users=users)
+
+
+@app.route('/manage/batch-add-users', methods=['POST'])
+@login_required
+def post_manage_batch_add_users():
+    category = request.form.get('category', '').strip()
+    if not category:
+        flash('入学年份不能为空', 'warning')
+        return redirect(url_for('get_manage_batch_add_users'))
+    text = request.form.get('text', '').strip()
+    users = []
+    for line in text.split('\n'):
+        splited = line.split()
+        if not splited:
+            continue
+        if len(splited) != 3:
+            flash('格式错误：<code>%s</code>' % line, 'warning')
+            return redirect(url_for('get_manage_batch_add_users'))
+        pinyin = pypinyin.pinyin(splited[1], heteronym=False, style=pypinyin.NORMAL, errors='ignore')
+        pinyin = ' '.join(x[0] for x in pinyin)
+        users.append(User(name=splited[1],
+                          pinyin=pinyin,
+                          stuid=splited[0],
+                          email=splited[2],
+                          category=category,
+                          dropped=False,
+                          allow_login=True))
+    status = request.form.get('status', '0')
+    if status != '1':
+        flash('请确认以下信息是否正确，然后点击注册', 'warning')
+        return render_template('manage_batch_add_users.html', status=1, users=users, category=category, text=text)
+    user_dicts = []
+    for u in users:
+        db_session.add(u)
+        user_dicts.append({'name': u.name, 'pinyin': u.pinyin, 'stuid': u.stuid, 'email': u.email})
+    db_session.commit()
+    # TODO: commit failure
+    flash('批量添加用户成功', 'success')
+    session['manage_batch_add_users_status'] = 2
+    session['manage_batch_add_users_users'] = user_dicts
+    return redirect(url_for('get_manage_batch_add_users'))

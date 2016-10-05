@@ -2,6 +2,7 @@ from __future__ import print_function, division
 import sys
 import time
 import hashlib
+import pypinyin
 import acm_report.database as db
 import acm_report.models as models
 
@@ -25,16 +26,17 @@ def read(prompt):
 def create_admin():
     print('creating admin account. please provide the following informations.')
     name = read('Name: ')
-    pinyin = read('Pinyin Initials (e.g. clq): ')
     stuid = read('StudentID: ')
     email = read('Email: ')
     category = read('Category (e.g. 2014): ')
-    print('got it:', name, pinyin, stuid, email, category)
+    print('got it:', name, stuid, email, category)
     confirm = read('is the above info correct? [y/n] ')
     if confirm != 'y':
         print('given up')
         sys.exit(1)
 
+    pinyin = pypinyin.pinyin(name, heteronym=False, style=pypinyin.NORMAL, errors='ignore')
+    pinyin = ' '.join(x[0] for x in pinyin)
     user = models.User(name=name,
                        pinyin=pinyin,
                        stuid=stuid,
