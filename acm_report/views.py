@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-import pytz
 import uuid
 import functools
 import pypinyin
@@ -194,7 +193,8 @@ def get_user_list():
 
     users = query.order_by(User.id.desc()).all()
     categories = db_session.query(User.category).distinct().all()
-    return render_template('user_list.html', users=users, categories=categories)
+    tasks = db_session.query(Task).filter(Task.deadline > datetime.utcnow()).all()
+    return render_template('user_list.html', users=users, categories=categories, tasks=tasks)
 
 
 @app.route('/manage/batch-add-users')
@@ -272,7 +272,7 @@ def post_task_new():
         session['get_task_new_title'] = title
         session['get_task_new_deadline'] = request.form.get('deadline', '').strip()
         return redirect(url_for('get_task_new'))
-    task = Task(title=title, deadline=deadline)
+    task = Task(title=title, deadline=deadline, published=False)
     db_session.add(task)
     db_session.commit()
     return redirect(url_for('get_task_info', id=task.id))
@@ -292,4 +292,105 @@ def get_task_info(id):
     if not task:
         flash('找不到该任务', 'warning')
         return redirect(url_for('get_task_list'))
-    return render_template('task_info.html', task=task)
+    return render_template('task_info.html',
+                           task=task,
+                           users=task.users,
+                           requirements=task.requirements)
+
+
+@app.route('/task/add_users', methods=['POST'])
+@login_required
+def post_task_add_users():
+    selected = request.form.get('selected', '').split('|')
+    id = request.form.get('taskid', None)
+    try:
+        id = int(id)
+    except:
+        pass
+    task = db_session.query(Task).filter(Task.id == id).first()
+    err = None
+    if not selected:
+        err = '没有选中的用户'
+    if not task:
+        err = '找不到该任务'
+    if not err and task.deadline < datetime.utcnow():
+        err = '该任务已过截止日期'
+    if err:
+        flash(err, 'warning')
+        return redirect(url_for('get_user_list'))
+
+    for u in task.users:
+        uid = str(u.id)
+        if uid in selected:
+            selected.remove(uid)
+
+    users = db_session.query(User).filter(User.id.in_(selected)).all()
+    if len(users) != len(selected):
+        flash('某个用户不存在于数据库中', 'warning')
+        return redirect(url_for('get_user_list'))
+    task.users.extend(users)
+    db_session.commit()
+
+    flash('添加用户成功', 'success')
+    return redirect(url_for('get_task_info', id=task.id))
+
+
+def check_task_requirement_config(config, type):
+    allowed_keys = {
+        TaskRequirementType.freetext: {'title'},
+        TaskRequirementType.ta_review: {'title', 'num'},
+        TaskRequirementType.course_review: {'title', 'num'},
+        TaskRequirementType.peer_review: {'title', 'num', 'type'},
+    }
+    for c in config.split('|'):
+        splited = c.split(':')
+        if len(splited) != 2:
+            return False
+        k, v = splited[0].strip(), splited[1].strip()
+        if k not in allowed_keys[type]:
+            return False
+        if k == 'num':
+            try:
+                v = int(v)
+            except:
+                return False
+        elif k == 'type':
+            if v not in PeerReviewType.__members__:
+                return False
+    return True
+
+
+@app.route('/task/task_add_requirement', methods=['POST'])
+@login_required
+def post_task_add_requirement():
+    id = request.form.get('id', None)
+    type = request.form.get('type', '')
+    config = request.form.get('config', '')
+    try:
+        id = int(id)
+    except:
+        pass
+    task = db_session.query(Task).filter(Task.id == id).first()
+    err = None
+    if not task:
+        err = '找不到该任务'
+    if not err and task.deadline < datetime.utcnow():
+        err = '该任务已过截止日期'
+    if type not in TaskRequirementType.__members__:
+        err = '没有类型为 %s 的任务' % type
+    else:
+        type = TaskRequirementType[type]
+    if not err and not check_task_requirement_config(config, type):
+        err = 'config 格式不正确'
+    if err:
+        flash(err, 'warning')
+        return redirect(url_for('get_task_info', id=id))
+
+    r = TaskRequirement(type=type,
+                        task_id=task.id,
+                        order=len(task.requirements) + 1,
+                        config=config)
+    task.requirements.append(r)
+    db_session.commit()
+    flash('成功添加任务', 'success')
+    return redirect(url_for('get_task_info', id=id))

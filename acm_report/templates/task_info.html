@@ -9,4 +9,92 @@
   <dd>{{task.deadline | format_from_utc}}</dd>
 </dl>
 
+<div class="panel panel-default">
+  <div class="panel-heading"><h2 class="panel-title">用户列表</h2></div>
+  <div class="panel-body">
+    <a class="btn btn-primary" href="{{ url_for('get_user_list') }}">
+      <i class="icon-filter icon-white"></i> 添加用户
+    </a>
+  </div>
+  <table class="table table-striped table-bordered table-condensed table-helper table-hover">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>名字</th>
+        <th>入学年份</th>
+        <th>学号</th>
+        <th>已转出</th>
+        <th>允许登入</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr data-value="{{u.id}}">
+        <td>{{u.id}}</td>
+        <td>{{u.name}}</td>
+        <td>{{u.category}}</td>
+        <td>{{u.stuid}}</td>
+        <td><input type="checkbox" {% if u.dropped %}checked{% endif %} disabled></td>
+        <td><input type="checkbox" {% if u.allow_login %}checked{% endif %} disabled></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-heading"><h2 class="panel-title">任务要求</h2></div>
+  <div class="panel-body">
+    <form class="form-inline" method="post" action="{{ url_for('post_task_add_requirement') }}">
+      <fieldset>
+        <input type="hidden" name="id" value="{{task.id}}">
+        <select name="type" class="input-md form-control">
+          <option value="None" selected>任务类型</option>
+          <option value="freetext">自由文本</option>
+          <option value="course_review">课程评价</option>
+          <option value="peer_review">同学评价</option>
+          <option value="ta_review">助教评价</option>
+        </select>
+        <input type="text" name="config" size="80" class="input-md form-control monospace" placeholder="config">
+        <button type="submit" class="form-control btn-md btn-primary">
+          <i class="icon-filter icon-white"></i> 添加任务要求
+        </button>
+      </fieldset>
+    </form>
+    <pre>About config:
+Format:
+    key1: value1 | key2: value2 | ...
+Keys:
+    自由文本：
+        title => 标题名称
+    课程评价：
+        title => 标题名称
+        num   => 评价数量 / -1为不限
+    同学评价：
+        title => 标题名称
+        type  => positive好评 / negative差评 / neutral中性
+        num   => 评价数量 / -1为不限
+    助教评价：
+        title => 标题名称
+        num   => 评价数量 / -1为不限</pre>
+  </div>
+  <table class="table table-striped table-bordered table-condensed table-helper table-hover">
+    <thead>
+      <tr>
+        <th>编号</th>
+        <th>类型</th>
+        <th>设定</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in requirements %}
+      <tr class="monospace" data-value="{{r.id}}">
+        <td>{{r.order}}</td>
+        <td>{{r.type.name}}</td>
+        <td><code>{{r.config}}</code></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

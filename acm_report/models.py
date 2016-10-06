@@ -5,9 +5,9 @@ import enum
 
 
 PeerReviewType = enum.Enum('PeerReviewType', [
-    'positivie',
+    'positive',
     'negative',
-    'mention',
+    'neutral',
 ])
 
 PrivilegeType = enum.Enum('PrivilegeType', [
@@ -22,7 +22,7 @@ TaskRequirementType = enum.Enum('TaskRequirementType', [
     'course_review',
     'peer_review',
     'ta_review',
-    'article',
+    'freetext',
 ])
 
 
@@ -57,10 +57,9 @@ class Privilege(Base):
     granted_at = Column(TIMESTAMP, nullable=False)
 
 
-class Article(Base):
-    __tablename__ = 'articles'
+class FreeText(Base):
+    __tablename__ = 'freetexts'
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
     update_at = Column(TIMESTAMP, nullable=False)
     text = Column(Text)
 
@@ -94,10 +93,16 @@ class TAReview(Base):
     __tablename__ = 'ta_reviews'
     id = Column(Integer, primary_key=True)
     reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    course_name = Column(String, nullable=False)
+    course_id = Column(Integer, ForeignKey('courses.id'), nullable=False)
     ta_name = Column(String)
     ta_id = Column(Integer, ForeignKey('users.id'))
     text = Column(Text)
+
+
+class TaskMember(Base):
+    __tablename__ = 'task_members'
+    task_id = Column(Integer, ForeignKey('tasks.id'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
 
 
 class Task(Base):
@@ -105,13 +110,9 @@ class Task(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
     deadline = Column(TIMESTAMP, nullable=False)
-
-
-class TaskMember(Base):
-    __tablename__ = 'task_members'
-    id = Column(Integer, primary_key=True)
-    task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    published = Column(Boolean, nullable=False)
+    users = relationship('User', secondary=TaskMember.__table__, order_by='User.id.desc()')
+    requirements = relationship('TaskRequirement', order_by='TaskRequirement.order.asc()')
 
 
 class TaskRequirement(Base):
@@ -119,7 +120,8 @@ class TaskRequirement(Base):
     id = Column(Integer, primary_key=True)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     type = Column(Enum(TaskRequirementType), nullable=False)
-    config = Column(String)
+    order = Column(Integer, nullable=False)
+    config = Column(Text)
 
 
 class ReportFragment(Base):
@@ -127,11 +129,12 @@ class ReportFragment(Base):
     id = Column(Integer, primary_key=True)
     report_id = Column(Integer, ForeignKey('reports.id'), nullable=False)
     requirement_id = Column(Integer, ForeignKey('task_requirements.id'), nullable=False)
+    order = Column(Integer, nullable=False)
     update_at = Column(TIMESTAMP, nullable=False)
     course_review_id = Column(Integer, ForeignKey('course_reviews.id'))
     peer_review_id = Column(Integer, ForeignKey('peer_reviews.id'))
     ta_review_id = Column(Integer, ForeignKey('ta_reviews.id'))
-    article_id = Column(Integer, ForeignKey('articles.id'))
+    text_id = Column(Integer, ForeignKey('freetexts.id'))
 
 
 class Report(Base):
@@ -139,5 +142,5 @@ class Report(Base):
     id = Column(Integer, primary_key=True)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    finished = Column(Boolean, nullable=False)
+    published = Column(Boolean, nullable=False)
     update_at = Column(TIMESTAMP, nullable=False)
