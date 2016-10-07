@@ -6,3 +6,18 @@ body {
 .monospace {
     font-family: monospace;
 }
+
+#top-notification {
+    position: fixed;
+    top: 0;
+    left: 35%;
+    width: 30%;
+    height: 52px;
+    line-height: 52px;
+    background-color: #eee;
+    z-index: 9999;
+}
+
+.invisible {
+    display: none;
+}

@@ -278,10 +278,24 @@ def post_task_new():
     return redirect(url_for('get_task_info', id=task.id))
 
 
+def set_task_status(task):
+    if task.deadline < datetime.utcnow():
+        task.status = 'ended'
+    elif task.published:
+        task.status = 'published'
+    else:
+        task.status = 'configuring'
+    query = db_session.query(Report)
+    query = query.filter(Report.task_id == task.id, Report.user_id == session['user_id'])
+    task.involved = query.first() is not None
+
+
 @app.route('/task/list')
 @login_required
 def get_task_list():
     tasks = db_session.query(Task).order_by(Task.id.desc()).all()
+    for t in tasks:
+        set_task_status(t)
     return render_template('task_list.html', tasks=tasks)
 
 
@@ -292,6 +306,7 @@ def get_task_info(id):
     if not task:
         flash('找不到该任务', 'warning')
         return redirect(url_for('get_task_list'))
+    set_task_status(task)
     return render_template('task_info.html',
                            task=task,
                            users=task.users,
@@ -328,7 +343,12 @@ def post_task_add_users():
     if len(users) != len(selected):
         flash('某个用户不存在于数据库中', 'warning')
         return redirect(url_for('get_user_list'))
-    task.users.extend(users)
+    for user in users:
+        report = Report(task_id=task.id,
+                        user_id=user.id,
+                        published=False,
+                        update_at=datetime.utcnow())
+        db_session.add(report)
     db_session.commit()
 
     flash('添加用户成功', 'success')
@@ -337,41 +357,48 @@ def post_task_add_users():
 
 def check_task_requirement_config(config, type):
     allowed_keys = {
-        TaskRequirementType.freetext: {'title'},
-        TaskRequirementType.ta_review: {'title', 'num'},
-        TaskRequirementType.course_review: {'title', 'num'},
-        TaskRequirementType.peer_review: {'title', 'num', 'type'},
+        TaskRequirementType.freetext: {},
+        TaskRequirementType.ta_review: {},
+        TaskRequirementType.course_review: {},
+        TaskRequirementType.peer_review: {'type'},
     }
     for c in config.split('|'):
+        if not c:
+            continue
         splited = c.split(':')
         if len(splited) != 2:
             return False
         k, v = splited[0].strip(), splited[1].strip()
         if k not in allowed_keys[type]:
             return False
-        if k == 'num':
-            try:
-                v = int(v)
-            except:
-                return False
-        elif k == 'type':
+        if k == 'type':
             if v not in PeerReviewType.__members__:
                 return False
-    return True
+        allowed_keys[type].remove(k)
+    return not allowed_keys[type]
 
 
-@app.route('/task/task_add_requirement', methods=['POST'])
+@app.route('/task/add_requirement', methods=['POST'])
 @login_required
 def post_task_add_requirement():
     id = request.form.get('id', None)
     type = request.form.get('type', '')
+    title = request.form.get('title', '')
+    number = request.form.get('number', None)
+    description = request.form.get('description', '')
     config = request.form.get('config', '')
+    err = None
     try:
         id = int(id)
     except:
         pass
+    try:
+        number = int(number)
+    except:
+        err = '数量格式不正确'
+    if not title:
+        err = '标题不能为空'
     task = db_session.query(Task).filter(Task.id == id).first()
-    err = None
     if not task:
         err = '找不到该任务'
     if not err and task.deadline < datetime.utcnow():
@@ -389,8 +416,82 @@ def post_task_add_requirement():
     r = TaskRequirement(type=type,
                         task_id=task.id,
                         order=len(task.requirements) + 1,
+                        title=title,
+                        description=description,
+                        number=number,
                         config=config)
     task.requirements.append(r)
     db_session.commit()
     flash('成功添加任务', 'success')
     return redirect(url_for('get_task_info', id=id))
+
+
+@app.route('/task/publish', methods=['POST'])
+@login_required
+def post_task_publish():
+    id = request.form.get('id', None)
+    try:
+        id = int(id)
+    except:
+        pass
+    task = db_session.query(Task).filter(Task.id == id).first()
+    if not task:
+        flash('找不到该任务', 'warning')
+        return redirect(url_for('get_task_list'))
+    task.published = True
+    db_session.commit()
+    flash('任务成功发布', 'success')
+    return redirect(url_for('get_task_info', id=id))
+
+
+@app.route('/task/<int:id>/my_report')
+@login_required
+def get_task_my_report(id):
+    task = db_session.query(Task).filter(Task.id == id).first()
+    if not task:
+        flash('找不到该任务', 'warning')
+        return redirect(url_for('get_task_list'))
+    query = db_session.query(Report).filter(Report.task_id == task.id,
+                                            Report.user_id == session['user_id'])
+    report = query.first()
+    if not report:
+        flash('您不属于该任务', 'warning')
+        return redirect(url_for('get_task_info', id=id))
+    return redirect(url_for('get_report', id=report.id))
+
+
+@app.route('/report/<int:id>')
+@login_required
+def get_report(id):
+    report = db_session.query(Report).filter(Report.id == id).first()
+    if not report:
+        flash('找不到该小结', 'warning')
+        return redirect(url_for('get_task_info', id=task.id))
+
+    return render_template('report.html',
+                           report=report,
+                           task=report.task,
+                           user=report.user,
+                           fragments=report.fragments,
+                           requirements=report.task.requirements)
+
+
+@app.route('/report/add_fragment', methods=['POST'])
+@login_required
+def post_report_add_fragment():
+    err = False
+    try:
+        task_id = int(request.form.get('task_id', None))
+        report_id = int(request.form.get('report_id', None))
+        requirement_id = int(request.form.get('requirement_id', None))
+    except:
+        err = True
+    if not err:
+        task = db_session.query(Task).filter(Task.id == task_id).first()
+        report = db_session.query(Report).filter(Report.id == report_id).first()
+        query = db_session.query(TaskRequirement).filter(TaskRequirement.id == requirement_id,
+                                                         TaskRequirement.task_id == task_id)
+        requirement = query.first()
+    if err or not task or not report or not requirement:
+        flash('无法添加片段', 'warning')
+        return redirect(url_for('get_task_list'))

@@ -99,28 +99,15 @@ class TAReview(Base):
     text = Column(Text)
 
 
-class TaskMember(Base):
-    __tablename__ = 'task_members'
-    task_id = Column(Integer, ForeignKey('tasks.id'), primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
-
-
-class Task(Base):
-    __tablename__ = 'tasks'
-    id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)
-    deadline = Column(TIMESTAMP, nullable=False)
-    published = Column(Boolean, nullable=False)
-    users = relationship('User', secondary=TaskMember.__table__, order_by='User.id.desc()')
-    requirements = relationship('TaskRequirement', order_by='TaskRequirement.order.asc()')
-
-
 class TaskRequirement(Base):
     __tablename__ = 'task_requirements'
     id = Column(Integer, primary_key=True)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     type = Column(Enum(TaskRequirementType), nullable=False)
     order = Column(Integer, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    number = Column(Integer, nullable=False)
     config = Column(Text)
 
 
@@ -135,6 +122,10 @@ class ReportFragment(Base):
     peer_review_id = Column(Integer, ForeignKey('peer_reviews.id'))
     ta_review_id = Column(Integer, ForeignKey('ta_reviews.id'))
     text_id = Column(Integer, ForeignKey('freetexts.id'))
+    course_review = relationship('CourseReview', uselist=False)
+    peer_review = relationship('PeerReview', uselist=False)
+    ta_review = relationship('TAReview', uselist=False)
+    text = relationship('FreeText', uselist=False)
 
 
 class Report(Base):
@@ -144,3 +135,16 @@ class Report(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     published = Column(Boolean, nullable=False)
     update_at = Column(TIMESTAMP, nullable=False)
+    user = relationship('User', uselist=False)
+    task = relationship('Task', uselist=False)
+    fragments = relationship('ReportFragment')
+
+
+class Task(Base):
+    __tablename__ = 'tasks'
+    id = Column(Integer, primary_key=True)
+    title = Column(String, nullable=False)
+    deadline = Column(TIMESTAMP, nullable=False)
+    published = Column(Boolean, nullable=False)
+    users = relationship('User', secondary=Report.__table__, order_by='User.id.desc()')
+    requirements = relationship('TaskRequirement', order_by='TaskRequirement.order.asc()')

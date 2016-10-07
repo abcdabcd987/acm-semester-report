@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block title %}{{user.name}} - {{task.title}}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{task.title}} <small>{{user.name}} <span class="badge">{{user.category}}</span></small></h1>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-heading"><h2 class="panel-title">学期小结信息</h2></div>
+  <div class="panel-body">
+    <dl class="dl-horizontal">
+      <dt>学期小结</dt>
+      <dd><a href="{{ url_for('get_task_info', id=task.id) }}">{{task.title}}</a></dd>
+      <dt>作者</dt>
+      <dd>{{user.name}} <span class="badge">{{user.category}}</span></dd>
+      <dt>最后修改</dt>
+      <dd>{{report.update_at | format_from_utc}}</dd>
+      <dt>状态</dt>
+      <dd>
+      {% if report.published %}
+        <span class="label label-success">已提交</span>
+      {% else %}
+        <span class="label label-warning">草稿</span>
+      {% endif %}
+      </dd>
+    </dl>
+    <!-- <form class="form-inline" method="post" action="{{ url_for('post_task_publish') }}" onsubmit="return confirm('确认？');">
+      <fieldset>
+        <input type="hidden" name="id" value="{{task.id}}">
+        <button type="submit" {% if task.published %}disabled{% endif %} class="form-control btn-md btn-default">
+          <i class="icon-filter icon-white"></i> 发布任务
+        </button>
+      </fieldset>
+    </form>-->
+  </div>
+</div>
+
+{% for r in requirements %}
+  <div class="panel panel-default">
+    <div class="panel-heading"><h2 class="panel-title">{{r.title}}</h2></div>
+    <div class="panel-body task-requirement-wrapper" data-type="{{r.type.name}}" data-number="{{r.number}}" data-config="{{r.config}}">
+      {{ r.description | nl2p | safe }}
+      <div class="report-fragment-wrapper">
+      {% for f in fragments %}
+        {% if f.requirement_id == r.id %}
+          <div class="report-fragment">
+          {% if f.type == TaskRequirementType.course_review %}
+            {{ f.type }}
+          {% elif f.type == TaskRequirementType.peer_review %}
+            {{ f.type }}
+          {% elif f.type == TaskRequirementType.ta_review %}
+            {{ f.type }}
+          {% elif f.type == TaskRequirementType.freetext %}
+            {{ f.type }}
+          {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+      </div>
+      <form class="form-inline" method="post" action="{{ url_for('post_report_add_fragment') }}">
+        <fieldset>
+          <input type="hidden" name="report_id" value="{{report.id}}">
+          <input type="hidden" name="requirement_id" value="{{r.id}}">
+          <button type="submit" class="form-control btn-md btn-default">
+            <i class="icon-filter icon-white"></i> 添加片段
+          </button>
+        </fieldset>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+
+<p class="text-center invisible" id="top-notification"></p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='report.js') }}"></script>
+{% endblock %}
