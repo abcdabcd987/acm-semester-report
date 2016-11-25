@@ -38,21 +38,29 @@
 {% for r in requirements %}
   <div class="panel panel-default">
     <div class="panel-heading"><h2 class="panel-title">{{r.title}}</h2></div>
-    <div class="panel-body task-requirement-wrapper" data-type="{{r.type.name}}" data-number="{{r.number}}" data-config="{{r.config}}">
+    <div class="panel-body task-requirement-wrapper">
       {{ r.description | nl2p | safe }}
       <div class="report-fragment-wrapper">
       {% for f in fragments %}
         {% if f.requirement_id == r.id %}
-          <div class="report-fragment">
-          {% if f.type == TaskRequirementType.course_review %}
-            {{ f.type }}
-          {% elif f.type == TaskRequirementType.peer_review %}
-            {{ f.type }}
-          {% elif f.type == TaskRequirementType.ta_review %}
-            {{ f.type }}
-          {% elif f.type == TaskRequirementType.freetext %}
-            {{ f.type }}
+          <div class="report-fragment" data-fragment-id="{{f.id}}">
+          <form method="post" action="{{ url_for('post_report_edit_fragment') }}">
+          <input type="hidden" name="fragment_id" value="{{f.id}}">
+          {% if f.review_type == TaskRequirementType.course_review %}
+            {{ f.review_type }}
+          {% elif f.review_type == TaskRequirementType.peer_review %}
+            <input type="text" class="form-control fill-user-id" value="{{f.reviewee.category}}/{{f.reviewee.name}}" data-fill-user-id=".fill-user-id-peer-review">
+            <input type="hidden" class="fill-user-id-peer-review" name="reviewee_id">
+          {% elif f.review_type == TaskRequirementType.ta_review %}
+            {{ f.review_type }}
+          {% elif f.review_type == TaskRequirementType.freetext %}
+            <textarea class="form-control" name="text" rows="3">{{f.text}}</textarea>
           {% endif %}
+          <button type="submit" class="form-control btn-md btn-default">
+            <i class="icon-filter icon-white"></i> 编辑片段
+          </button>
+          </form>
+          <hr>
           </div>
         {% endif %}
       {% endfor %}
@@ -61,6 +69,7 @@
         <fieldset>
           <input type="hidden" name="report_id" value="{{report.id}}">
           <input type="hidden" name="requirement_id" value="{{r.id}}">
+          <input type="hidden" name="type" value="{{r.type.name}}">
           <button type="submit" class="form-control btn-md btn-default">
             <i class="icon-filter icon-white"></i> 添加片段
           </button>

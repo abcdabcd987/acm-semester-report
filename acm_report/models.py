@@ -23,6 +23,7 @@ TaskRequirementType = enum.Enum('TaskRequirementType', [
     'peer_review',
     'ta_review',
     'freetext',
+    'base',
 ])
 
 
@@ -57,46 +58,12 @@ class Privilege(Base):
     granted_at = Column(TIMESTAMP, nullable=False)
 
 
-class FreeText(Base):
-    __tablename__ = 'freetexts'
-    id = Column(Integer, primary_key=True)
-    update_at = Column(TIMESTAMP, nullable=False)
-    text = Column(Text)
-
-
 class Course(Base):
     __tablename__ = 'courses'
     id = Column(Integer, primary_key=True)
     course_id = Column(String, nullable=False)
     course_name = Column(String, nullable=False)
     teacher_id = Column(Integer, ForeignKey('users.id'))
-
-
-class CourseReview(Base):
-    __tablename__ = 'course_reviews'
-    id = Column(Integer, primary_key=True)
-    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    course_id = Column(Integer, ForeignKey('courses.id'), nullable=False)
-    text = Column(Text)
-
-
-class PeerReview(Base):
-    __tablename__ = 'peer_reviews'
-    id = Column(Integer, primary_key=True)
-    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    reviewee_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    type = Column(Enum(PeerReviewType), nullable=False)
-    text = Column(Text)
-
-
-class TAReview(Base):
-    __tablename__ = 'ta_reviews'
-    id = Column(Integer, primary_key=True)
-    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    course_id = Column(Integer, ForeignKey('courses.id'), nullable=False)
-    ta_name = Column(String)
-    ta_id = Column(Integer, ForeignKey('users.id'))
-    text = Column(Text)
 
 
 class TaskRequirement(Base):
@@ -114,18 +81,64 @@ class TaskRequirement(Base):
 class ReportFragment(Base):
     __tablename__ = 'report_fragments'
     id = Column(Integer, primary_key=True)
+    review_type = Column(Enum(TaskRequirementType), nullable=False)
     report_id = Column(Integer, ForeignKey('reports.id'), nullable=False)
     requirement_id = Column(Integer, ForeignKey('task_requirements.id'), nullable=False)
     order = Column(Integer, nullable=False)
     update_at = Column(TIMESTAMP, nullable=False)
-    course_review_id = Column(Integer, ForeignKey('course_reviews.id'))
-    peer_review_id = Column(Integer, ForeignKey('peer_reviews.id'))
-    ta_review_id = Column(Integer, ForeignKey('ta_reviews.id'))
-    text_id = Column(Integer, ForeignKey('freetexts.id'))
-    course_review = relationship('CourseReview', uselist=False)
-    peer_review = relationship('PeerReview', uselist=False)
-    ta_review = relationship('TAReview', uselist=False)
-    text = relationship('FreeText', uselist=False)
+    report = relationship('Report', uselist=False)
+    requirement = relationship('TaskRequirement', uselist=False)
+    __mapper_args__ = {
+        'polymorphic_identity': TaskRequirementType.base,
+        'polymorphic_on': review_type,
+        'with_polymorphic': '*'
+    }
+
+
+class FreeText(ReportFragment):
+    __tablename__ = 'freetexts'
+    id = Column(Integer, ForeignKey('report_fragments.id'), primary_key=True)
+    text = Column(Text)
+    __mapper_args__ = {
+        'polymorphic_identity': TaskRequirementType.freetext,
+    }
+
+
+class CourseReview(ReportFragment):
+    __tablename__ = 'course_reviews'
+    id = Column(Integer, ForeignKey('report_fragments.id'), primary_key=True)
+    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    course_id = Column(Integer, ForeignKey('courses.id'))
+    text = Column(Text)
+    __mapper_args__ = {
+        'polymorphic_identity': TaskRequirementType.course_review,
+    }
+
+
+class PeerReview(ReportFragment):
+    __tablename__ = 'peer_reviews'
+    id = Column(Integer, ForeignKey('report_fragments.id'), primary_key=True)
+    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    reviewee_id = Column(Integer, ForeignKey('users.id'))
+    type = Column(Enum(PeerReviewType), nullable=False)
+    text = Column(Text)
+    reviewee = relationship('User', uselist=False, foreign_keys=[reviewee_id])
+    __mapper_args__ = {
+        'polymorphic_identity': TaskRequirementType.peer_review,
+    }
+
+
+class TAReview(ReportFragment):
+    __tablename__ = 'ta_reviews'
+    id = Column(Integer, ForeignKey('report_fragments.id'), primary_key=True)
+    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    course_id = Column(Integer, ForeignKey('courses.id'))
+    ta_name = Column(String)
+    ta_id = Column(Integer, ForeignKey('users.id'))
+    text = Column(Text)
+    __mapper_args__ = {
+        'polymorphic_identity': TaskRequirementType.ta_review,
+    }
 
 
 class Report(Base):

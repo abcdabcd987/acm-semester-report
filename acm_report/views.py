@@ -4,7 +4,7 @@ import uuid
 import functools
 import pypinyin
 from datetime import datetime
-from flask import request, redirect, session, url_for, flash, render_template
+from flask import request, redirect, session, url_for, flash, render_template, jsonify
 from acm_report import app
 from acm_report.models import *
 from acm_report.database import db_session
@@ -195,6 +195,24 @@ def get_user_list():
     categories = db_session.query(User.category).distinct().all()
     tasks = db_session.query(Task).filter(Task.deadline > datetime.utcnow()).all()
     return render_template('user_list.html', users=users, categories=categories, tasks=tasks)
+
+
+@app.route('/user/autocomplete.json')
+@login_required
+def get_user_autocomplete():
+    users = db_session.query(User).order_by(User.id.asc()).all()
+    list = []
+    for u in users:
+        list.append({
+            'id': u.id,
+            'name': u.name,
+            'stuid': u.stuid,
+            'pinyin': u.pinyin,
+            'initial': ''.join(map(lambda x: x[0] if x else '', u.pinyin.split())),
+            'category': u.category,
+            'dropped': u.dropped
+        })
+    return jsonify(list)
 
 
 @app.route('/manage/batch-add-users')
@@ -481,17 +499,70 @@ def get_report(id):
 def post_report_add_fragment():
     err = False
     try:
-        task_id = int(request.form.get('task_id', None))
         report_id = int(request.form.get('report_id', None))
         requirement_id = int(request.form.get('requirement_id', None))
+        type = TaskRequirementType[request.form.get('type', None)]
     except:
         err = True
     if not err:
-        task = db_session.query(Task).filter(Task.id == task_id).first()
+        user = db_session.query(User).filter(User.id == session['user_id']).first()
         report = db_session.query(Report).filter(Report.id == report_id).first()
-        query = db_session.query(TaskRequirement).filter(TaskRequirement.id == requirement_id,
-                                                         TaskRequirement.task_id == task_id)
-        requirement = query.first()
-    if err or not task or not report or not requirement:
+        requirement = db_session.query(TaskRequirement).filter(TaskRequirement.id == requirement_id).first()
+        task = report.task
+    if err or not user or not task or not report or not requirement:
         flash('无法添加片段', 'warning')
         return redirect(url_for('get_task_list'))
+
+    query = db_session.query(ReportFragment).filter(ReportFragment.report_id == report.id,
+                                                    ReportFragment.requirement_id == requirement.id)
+    num_requirement_fragment = query.count()
+    params = {
+        'report_id': report.id,
+        'requirement_id': requirement.id,
+        'update_at': datetime.utcnow(),
+        'order': num_requirement_fragment + 1
+    }
+    if type == TaskRequirementType.course_review:
+        review = CourseReview(reviewer_id=user.id, **params)
+    elif type == TaskRequirementType.peer_review:
+        try:
+            peer_review_type = PeerReviewType[request.form.get('peer_review_type', None)]
+        except:
+            peer_review_type = peer_review_type.neutral
+        review = PeerReview(reviewer_id=user.id, type=peer_review_type, **params)
+    elif type == TaskRequirementType.ta_review:
+        review = TAReview(reviewer_id=user.id, **params)
+    elif type == TaskRequirementType.freetext:
+        review = FreeText(text='', **params)
+    else:
+        flash('出现了奇怪的值 %r' % type, 'warning')
+        return redirect(url_for('get_report', id=report.id))
+    report.fragments.append(review)
+    db_session.add(review)
+    db_session.add(report)
+    db_session.commit()
+    flash('添加%s成功' % type.name, 'success')
+    return redirect(url_for('get_report', id=report.id))
+
+
+@app.route('/report/edit_fragment', methods=['POST'])
+@login_required
+def post_report_edit_fragment():
+    err = False
+    try:
+        fragment_id = int(request.form.get('fragment_id', None))
+        fragment = db_session.query(ReportFragment).filter(ReportFragment.id == fragment_id).first()
+    except:
+        err = True
+    if err or not fragment:
+        flash('找不到该片段', 'warning')
+        return redirect(url_for('get_task_list'))
+
+    if fragment.review_type == TaskRequirementType.freetext:
+        fragment.text = request.form.get('text', '')
+    else:
+        flash('出现了奇怪的片段类型 %s' % fragment.review_type, 'warning')
+        return redirect(url_for('get_task_list'))
+    db_session.commit()
+    flash('修改%s成功' % fragment.requirement.title, 'success')
+    return redirect(url_for('get_report', id=fragment.report.id))
