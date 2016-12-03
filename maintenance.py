@@ -7,6 +7,10 @@ import acm_report.database as db
 import acm_report.models as models
 
 
+def read(prompt):
+    return raw_input(prompt).strip().decode('utf-8')
+
+
 def initdb():
     key = int(time.time()) // 60
     key = hashlib.md5(str(key)).hexdigest()[:6]
@@ -19,40 +23,28 @@ def initdb():
     print('done!')
 
 
-def read(prompt):
-    return raw_input(prompt).strip().decode('utf-8')
-
-
-def create_admin():
-    print('creating admin account. please provide the following informations.')
-    name = read('Name: ')
-    stuid = read('StudentID: ')
-    email = read('Email: ')
-    category = read('Category (e.g. 2014): ')
-    print('got it:', name, stuid, email, category)
-    confirm = read('is the above info correct? [y/n] ')
-    if confirm != 'y':
-        print('given up')
+def add_users():
+    if len(sys.argv) != 3:
+        print('usage: python maintenance.py add_users new_user_list.txt')
         sys.exit(1)
-
-    pinyin = pypinyin.pinyin(name, heteronym=False, style=pypinyin.NORMAL, errors='ignore')
-    pinyin = ' '.join(x[0] for x in pinyin)
-    user = models.User(name=name,
-                       pinyin=pinyin,
-                       stuid=stuid,
-                       email=email,
-                       category=category,
-                       dropped=False,
-                       allow_login=True)
-    db.db_session.add(user)
+    cnt = 0
+    with open(sys.argv[2], 'rb') as f:
+        for line in f:
+            line = line.decode('utf-8').strip()
+            if line.startswith('#') or not line:
+                continue
+            name, email, year, stuid = line.split()
+            user = models.User(name=name, email=email, year=year, stuid=stuid)
+            db.db_session.add(user)
+            cnt += 1
     db.db_session.commit()
-    print('done!')
+    print('done! %d new users added' % cnt)
 
 
 if __name__ == '__main__':
     actions = {
         'initdb': initdb,
-        'create_admin': create_admin
+        'add_users': add_users
     }
     if len(sys.argv) < 2 or sys.argv[1] not in actions:
         print('usage: python maintenance.py ACTION')

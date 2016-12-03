@@ -1,10 +1,32 @@
 {% extends "layout.html" %}
-{% block title %}登入验证邮件已发送{% endblock %}
+{% block title %}身份验证{% endblock %}
 {% block content %}
-<div class="page_header">
-<h1>登入验证邮件已发送</h1>
-<p>请前往邮箱<code>{{ user.email }}</code>检查是否收到登入验证邮件，并在<mark><strong>当前</strong></mark>浏览器中打开验证链接。</p>
-<p>如果没有收到，您可以检查垃圾邮件，或者再次<a href="{{ url_for('get_login') }}">尝试再次登入</a>。<p>
+<div class="page-header">
+  <h1>身份验证</h1>
 </div>
+<form class="form-horizontal" method="post">
+<fieldset>
+<div class="form-group">
+  <label class="col-md-4 control-label" for="email">Email</label>  
+  <div class="col-md-4">
+    <input id="email" type="email" class="form-control input-md" value="{{ session['user_email'] }}" disabled>
+  </div>
+</div>
+<div class="form-group">
+  <label class="col-md-4 control-label" for="vericode">验证码</label>  
+  <div class="col-md-5">
+    <input id="vericode" type="text" name="vericode" class="form-control input-md monospace" required>
+  </div>
+</div>
+
+<div class="form-group">
+  <label class="col-md-4 control-label"></label>
+  <div class="col-md-4">
+    <button class="btn btn-primary">登入</button>
+  </div>
+</div>
+
+</fieldset>
+</form>
 
 {% endblock %}

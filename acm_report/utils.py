@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import pytz
 from datetime import datetime
 import acm_report.settings as settings
@@ -18,3 +20,19 @@ def local_to_utc(local):
 
 def nl2p(text):
     return ''.join("<p>%s</p>" % line for line in text.splitlines() if line)
+
+
+def semester_name(year, season):
+    if season == 'fall':
+        return '%d-%d学年秋季学期' % (year, year+1)
+    else:
+        return '%d-%d学年春夏学期' % (year-1, year)
+
+
+def date2semester(date):
+    if 3 <= date.month < 10:
+        return date.year, 'spring'
+    if date.month < 3:
+        return date.year-1, 'fall'
+    else:
+        return date.year, 'fall'

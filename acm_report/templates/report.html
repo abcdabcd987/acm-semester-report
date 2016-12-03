@@ -1,90 +1,55 @@
 {% extends "layout.html" %}
-{% block title %}{{user.name}} - {{task.title}}{% endblock %}
+{% block title %}ACM{{ session['user_year'] }}-{{ session['user_name'] }} {{semester_name(year, season)}}小结{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>{{task.title}} <small>{{user.name}} <span class="badge">{{user.category}}</span></small></h1>
+  <h1>{{semester_name(year, season)}}小结<small>ACM{{ session['user_year'] }}-{{ session['user_name'] }}</small></h1>
 </div>
 
-<div class="panel panel-default">
-  <div class="panel-heading"><h2 class="panel-title">学期小结信息</h2></div>
-  <div class="panel-body">
-    <dl class="dl-horizontal">
-      <dt>学期小结</dt>
-      <dd><a href="{{ url_for('get_task_info', id=task.id) }}">{{task.title}}</a></dd>
-      <dt>作者</dt>
-      <dd>{{user.name}} <span class="badge">{{user.category}}</span></dd>
-      <dt>最后修改</dt>
-      <dd>{{report.update_at | format_from_utc}}</dd>
-      <dt>状态</dt>
-      <dd>
-      {% if report.published %}
-        <span class="label label-success">已提交</span>
-      {% else %}
-        <span class="label label-warning">草稿</span>
-      {% endif %}
-      </dd>
-    </dl>
-    <!-- <form class="form-inline" method="post" action="{{ url_for('post_task_publish') }}" onsubmit="return confirm('确认？');">
-      <fieldset>
-        <input type="hidden" name="id" value="{{task.id}}">
-        <button type="submit" {% if task.published %}disabled{% endif %} class="form-control btn-md btn-default">
-          <i class="icon-filter icon-white"></i> 发布任务
-        </button>
-      </fieldset>
-    </form>-->
-  </div>
-</div>
+<h2>1. 正文部分</h2>
+{% set x = texts['article'][0] %}
+<h3>{{ x['title'] }}</h3>
+{{ x['body'] | nl2p | safe }}
 
-{% for r in requirements %}
-  <div class="panel panel-default">
-    <div class="panel-heading"><h2 class="panel-title">{{r.title}}</h2></div>
-    <div class="panel-body task-requirement-wrapper">
-      {{ r.description | nl2p | safe }}
-      <div class="report-fragment-wrapper">
-      {% for f in fragments %}
-        {% if f.requirement_id == r.id %}
-          <div class="report-fragment" data-fragment-id="{{f.id}}">
-          <form method="post" action="{{ url_for('post_report_edit_fragment') }}">
-          <input type="hidden" name="fragment_id" value="{{f.id}}">
-          {% if f.review_type == TaskRequirementType.course_review %}
-            {{ f.review_type }}
-          {% elif f.review_type == TaskRequirementType.peer_review %}
-            <input type="text" class="form-control fill-user-id" value="{% if f.reviewee.name %}{{f.reviewee.category}}/{{f.reviewee.name}}{% endif %}" data-fill-user-id=".fill-user-id-peer-review" data-fill-user-id-filter="student">
-            <input type="text" class="fill-user-id-peer-review" value="{% if f.reviewee_id %}{{ f.reviewee_id }}{% endif %}" name="reviewee_id">
-            <textarea class="form-control" name="text" rows="3">{% if f.text %}{{f.text}}{% endif %}</textarea>
-          {% elif f.review_type == TaskRequirementType.ta_review %}
-            {{ f.review_type }}
-          {% elif f.review_type == TaskRequirementType.freetext %}
-            <textarea class="form-control" name="text" rows="3">{% if f.text %}{{f.text}}{% endif %}</textarea>
-          {% endif %}
-          <button type="submit" class="form-control btn-md btn-default">
-            <i class="icon-filter icon-white"></i> 编辑片段
-          </button>
-          </form>
-          <hr>
-          </div>
-        {% endif %}
-      {% endfor %}
-      </div>
-      <form class="form-inline" method="post" action="{{ url_for('post_report_add_fragment') }}">
-        <fieldset>
-          <input type="hidden" name="report_id" value="{{report.id}}">
-          <input type="hidden" name="requirement_id" value="{{r.id}}">
-          <input type="hidden" name="type" value="{{r.type.name}}">
-          <button type="submit" class="form-control btn-md btn-default">
-            <i class="icon-filter icon-white"></i> 添加片段
-          </button>
-        </fieldset>
-      </form>
-    </div>
-  </div>
+<hr><h2>2. 课程评价</h2>
+{% for x in texts['course'] %}
+<h4>{{ x['course'] }} - {{ x['teacher'] }}</h4>
+{{ x['body'] | nl2p | safe }}
 {% endfor %}
 
-<p class="text-center invisible" id="top-notification"></p>
-{% endblock %}
+<hr><h2>3. 助教评价</h2>
+{% for x in texts['ta'] %}
+<h4>{{ x['course'] }} - {{ x['ta'] }}</h4>
+{{ x['body'] | nl2p | safe }}
+{% endfor %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='jQuery-Autocomplete-1.2.27/dist/jquery.autocomplete.min.js') }}"></script>
-<script src="{{ url_for('static', filename='report.js') }}"></script>
-<script src="{{ url_for('static', filename='fill_userid.js') }}"></script>
+{% set x = texts['teach'][0] %}
+<hr><h2>4. 助教工作小结</h2>
+{{ x['body'] | nl2p | safe }}
+
+{% set x = texts['lab'][0] %}
+<hr><h2>5. 实验室实习小结</h2>
+{{ x['body'] | nl2p | safe }}
+
+<hr><h2>6. 同学评价</h2>
+{% for x in texts['peer'] %}
+<h4>{{ x['name'] }}</h4>
+{{ x['body'] | nl2p | safe }}
+{% endfor %}
+
+<hr><h2>7. 同学好评</h2>
+{% for x in texts['positive'] %}
+<h4>{{ x['name'] }}</h4>
+{{ x['body'] | nl2p | safe }}
+{% endfor %}
+
+<hr><h2>8. 同学差评</h2>
+{% for x in texts['negative'] %}
+<h4>{{ x['name'] }}</h4>
+{{ x['body'] | nl2p | safe }}
+{% endfor %}
+
+{% set x = texts['advice'][0] %}
+<hr><h2>9. 班级的建议</h2>
+{{ x['body'] | nl2p | safe }}
+
 {% endblock %}

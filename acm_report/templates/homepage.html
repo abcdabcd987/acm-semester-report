@@ -1,39 +1,18 @@
 {% extends "layout.html" %}
 {% block title %}首页{% endblock %}
 {% block content %}
-<h1>Homepage Placeholder</h1>
+<div class="page-header">
+    <h1>ACM班学期小结</h1>
+</div>
+<p>如需要帮助，请联系管理员：<code>i@abcdabcd987.com</code></p>
 
-{% if session.user_id %}
-sessions:
+<h3>查看历年小结提交情况</h3>
 <ul>
-{% for k in session %}
-    <li>{{k}}: {{session[k]}}</li>
+{% for y in range(datetime.utcnow().year, 2009, -1) %}
+    <li>{{y}}-{{y+1}}学年
+        <a href="{{url_for('get_semester', year=y, season='fall')}}">秋季学期</a>
+        <a href="{{url_for('get_semester', year=y+1, season='spring')}}">春季学期</a>
+    </li>
 {% endfor %}
-</ul>
-{% else %}
-not login yet
-{% endif %}
-
-
-actions:
-<ul>
-    <li>user</li>
-    <ul>
-        <li><a href="/login">login</a></li>
-        <li><a href="/logout">logout</a></li>
-        <li><a href="/user/autocomplete.json">autocomplete</a></li>
-        <li><a href="/user/modify">modify user</a></li>
-        <li><a href="/user/list">user list</a></li>
-    </ul>
-    <li>task</li>
-    <ul>
-        <li><a href="/task/new">new</a></li>
-        <li><a href="/task/list">list</a></li>
-    </ul>
-    <li>manage</li>
-    <ul>
-        <li><a href="/manage/batch-add-users">batch add users</a></li>
-        <li><a href="/manage/assign-task/step1">assign task</a></li>
-    </ul>
 </ul>
 {% endblock %}

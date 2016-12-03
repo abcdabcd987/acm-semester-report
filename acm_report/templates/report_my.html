@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block title %}我的小结{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>我的小结</h1>
+</div>
+<ul>
+{% for r in reports %}
+    <li><a href="{{url_for('get_report', id=r.id)}}">{{ r.created_at | format_from_utc }}</a></li>
+{% endfor %}
+</ul>
+
+{% endblock %}
