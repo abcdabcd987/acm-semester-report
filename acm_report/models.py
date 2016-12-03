@@ -64,6 +64,7 @@ class Course(Base):
     course_id = Column(String, nullable=False)
     course_name = Column(String, nullable=False)
     teacher_id = Column(Integer, ForeignKey('users.id'))
+    teacher = relationship("User", uselist=False)
 
 
 class TaskRequirement(Base):

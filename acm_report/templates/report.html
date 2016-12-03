@@ -49,12 +49,13 @@
           {% if f.review_type == TaskRequirementType.course_review %}
             {{ f.review_type }}
           {% elif f.review_type == TaskRequirementType.peer_review %}
-            <input type="text" class="form-control fill-user-id" value="{{f.reviewee.category}}/{{f.reviewee.name}}" data-fill-user-id=".fill-user-id-peer-review">
-            <input type="hidden" class="fill-user-id-peer-review" name="reviewee_id">
+            <input type="text" class="form-control fill-user-id" value="{% if f.reviewee.name %}{{f.reviewee.category}}/{{f.reviewee.name}}{% endif %}" data-fill-user-id=".fill-user-id-peer-review" data-fill-user-id-filter="student">
+            <input type="text" class="fill-user-id-peer-review" value="{% if f.reviewee_id %}{{ f.reviewee_id }}{% endif %}" name="reviewee_id">
+            <textarea class="form-control" name="text" rows="3">{% if f.text %}{{f.text}}{% endif %}</textarea>
           {% elif f.review_type == TaskRequirementType.ta_review %}
             {{ f.review_type }}
           {% elif f.review_type == TaskRequirementType.freetext %}
-            <textarea class="form-control" name="text" rows="3">{{f.text}}</textarea>
+            <textarea class="form-control" name="text" rows="3">{% if f.text %}{{f.text}}{% endif %}</textarea>
           {% endif %}
           <button type="submit" class="form-control btn-md btn-default">
             <i class="icon-filter icon-white"></i> 编辑片段
@@ -83,5 +84,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='jQuery-Autocomplete-1.2.27/dist/jquery.autocomplete.min.js') }}"></script>
 <script src="{{ url_for('static', filename='report.js') }}"></script>
+<script src="{{ url_for('static', filename='fill_userid.js') }}"></script>
 {% endblock %}

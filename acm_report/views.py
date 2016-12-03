@@ -528,7 +528,7 @@ def post_report_add_fragment():
         try:
             peer_review_type = PeerReviewType[request.form.get('peer_review_type', None)]
         except:
-            peer_review_type = peer_review_type.neutral
+            peer_review_type = PeerReviewType.neutral
         review = PeerReview(reviewer_id=user.id, type=peer_review_type, **params)
     elif type == TaskRequirementType.ta_review:
         review = TAReview(reviewer_id=user.id, **params)
@@ -560,9 +560,76 @@ def post_report_edit_fragment():
 
     if fragment.review_type == TaskRequirementType.freetext:
         fragment.text = request.form.get('text', '')
+    elif fragment.review_type == TaskRequirementType.peer_review:
+        try:
+            reviewee_id = int(request.form.get('reviewee_id', None))
+            reviewee = db_session.query(User).filter(User.id == reviewee_id).one()
+        except:
+            flash('找不到该被评价者', 'warning')
+            return redirect(url_for('get_report', id=fragment.report.id))
+        fragment.text = request.form.get('text', '')
+        fragment.reviewee = reviewee
     else:
         flash('出现了奇怪的片段类型 %s' % fragment.review_type, 'warning')
         return redirect(url_for('get_task_list'))
     db_session.commit()
     flash('修改%s成功' % fragment.requirement.title, 'success')
     return redirect(url_for('get_report', id=fragment.report.id))
+
+
+@app.route('/course/new')
+@login_required
+def get_course_new():
+    return render_template('course_edit.html', c=None)
+
+
+@app.route('/course/new', methods=['POST'])
+@login_required
+def post_course_new():
+    try:
+        teacher_id = int(request.form.get('teacher_id', None))
+        teacher = db_session.query(Course).filter(Course.id == teacher_id).one()
+    except:
+        flash('找不到该授课教师', 'warning')
+        return redirect(url_for('get_course_new'))
+    c = Course()
+    c.course_id = request.form.get('course_id', '')
+    c.course_name = request.form.get('course_name', '')
+    c.teacher = teacher
+    db_session.add(c)
+    db_session.commit()
+    flash('添加课程成功', 'success')
+    return redirect(url_for('get_course_edit', id))
+
+
+@app.route('/course/<int:id>/edit')
+@login_required
+def get_course_edit(id):
+    try:
+        c = db_session.query(Course).filter(Course.id == id).one()
+    except:
+        flash('找不到该课程', 'warning')
+        return redirect(url_for('get_course_list'))
+    return render_template('course_edit.html', c)
+
+
+@app.route('/course/<int:id>/edit', methods=['POST'])
+@login_required
+def post_course_edit(id):
+    try:
+        c = db_session.query(Course).filter(Course.id == id).one()
+    except:
+        flash('找不到该课程', 'warning')
+        return redirect(url_for('get_course_edit', id))
+    try:
+        teacher_id = int(request.form.get('teacher_id', None))
+        teacher = db_session.query(Course).filter(Course.id == teacher_id).one()
+    except:
+        flash('找不到该授课教师', 'warning')
+        return redirect(url_for('get_course_edit', id))
+    c.course_id = request.form.get('course_id', '')
+    c.course_name = request.form.get('course_name', '')
+    c.teacher = teacher
+    db_session.commit()
+    flash('修改课程成功', 'success')
+    return redirect(url_for('get_course_edit', id))
