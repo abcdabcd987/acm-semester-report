@@ -5,6 +5,8 @@
   <h1>{{ semester_name(year, season) }}小结</h1>
 </div>
 
+<p>可重复提交。以最后一次提交为准。</p>
+
 <form class="form-horizontal" method="post">
 <fieldset>
 
@@ -70,11 +72,11 @@
 {{ text_tool(num_extra=max(0, len(texts['ta'])-1)) }}
 
 <hr><h2>4. 助教工作小结</h2>
-<p>如自己是助教，需要作自我评价、例举影响深刻的学生与事，以及建议。</p>
+<p>如自己是助教，需要作自我评价、例举影响深刻的学生与事，以及建议。否则请留空。</p>
 {{ textarea("teach", "正文", texts['teach'][0]['body'], rows=20, required=False) }}
 
 <hr><h2>5. 实验室实习小结</h2>
-<p>进入实验室后需要填写。</p>
+<p>进入实验室后需要填写。否则请留空。</p>
 {{ textarea("lab", "正文", texts['lab'][0]['body'], rows=20, required=False) }}
 
 <hr><h2>6. 同学评价</h2>
@@ -118,7 +120,7 @@
 <div class="form-group">
   <label class="col-md-4 control-label"></label>
   <div class="col-md-4">
-    <button class="btn btn-primary">提交</button>
+    <button class="btn btn-primary"><span class="glyphicon glyphicon-send" aria-hidden="true"></span> 提交</button>
   </div>
 </div>
 

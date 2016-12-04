@@ -13,6 +13,7 @@ app.jinja_env.globals.update(semester_name=utils.semester_name)
 app.jinja_env.globals.update(datetime=datetime.datetime)
 app.jinja_env.globals.update(len=len)
 app.jinja_env.globals.update(max=max)
+app.jinja_env.globals.update(zip=zip)
 
 
 @app.teardown_appcontext

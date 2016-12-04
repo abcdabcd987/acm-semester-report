@@ -84,7 +84,6 @@ def post_login_verify():
         flash('已登入', 'success')
         return redirect(url_for('get_homepage'))
     vericode = request.form.get('vericode', None)
-    print vericode, expected
     if vericode != expected:
         flash('验证码错误', 'warning')
         return redirect(url_for('get_login_verify'))
@@ -121,13 +120,13 @@ def get_report_create():
                        .first()
     texts = load_report_texts(report) if report else {}
     if 'article' not in texts: texts['article'] = [{'title': '', 'body': ''}]
-    if 'course' not in texts: texts['course'] = []
-    if 'ta' not in texts: texts['ta'] = []
+    if 'course' not in texts: texts['course'] = [{'course': '', 'teacher': '', 'body': ''}]
+    if 'ta' not in texts: texts['ta'] = [{'course': '', 'ta': '', 'body': ''}]
     if 'teach' not in texts: texts['teach'] = [{'body': ''}]
     if 'lab' not in texts: texts['lab'] = [{'body': ''}]
-    if 'peer' not in texts: texts['peer'] = []
-    if 'positive' not in texts: texts['positive'] = []
-    if 'negative' not in texts: texts['negative'] = []
+    if 'peer' not in texts: texts['peer'] = [{'name': '', 'body': ''}] * 5
+    if 'positive' not in texts: texts['positive'] = [{'name': '', 'body': ''}] * 3
+    if 'negative' not in texts: texts['negative'] = [{'name': '', 'body': ''}] * 3
     if 'advice' not in texts: texts['advice'] = [{'body': ''}]
 
     return render_template('report_create.html', year=year, season=season, texts=texts)
@@ -244,4 +243,5 @@ def get_semester(year, season):
                            season=season,
                            reports=last_report,
                            users=users,
-                           years=range(uyear_ed, uyear_st-1, -1))
+                           years=range(uyear_ed, uyear_st-1, -1),
+                           ynames=['大一', '大二', '大三', '大四'])

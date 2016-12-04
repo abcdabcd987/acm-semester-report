@@ -4,8 +4,8 @@
 <div class="page-header">
   <h1>{{ semester_name(year, season) }}提交情况</h1>
 </div>
-{% for y in years %}
-<h2>{{y}}届</h2>
+{% for y, yn in zip(years, ynames) %}
+<h2>{{y}}级 {{yn}}</h2>
 <table class="table table-condensed table-striped">
     <thead>
         <tr>

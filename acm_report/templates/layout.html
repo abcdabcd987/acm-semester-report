@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!--
+Source Code:
+https://github.com/abcdabcd987/acm-semester-report
+-->
 <html lang="zh">
   <head>
     <meta charset="utf-8">
@@ -17,7 +21,7 @@
   </head>
   <body>
     <!-- Fixed navbar -->
-    <nav class="navbar navbar-inverse navbar-fixed-top">
+    <nav class="navbar navbar-inverse navbar-static-top">
       <div class="container">
         <div class="navbar-header">
           <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
@@ -30,20 +34,20 @@
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li><a href="{{url_for('get_homepage')}}">首页</a></li>
-            <li><a href="{{url_for('get_report_my')}}">我的小结</a></li>
-            <li><a href="{{url_for('get_report_create')}}">填写小结</a></li>
+            <li><a href="{{url_for('get_homepage')}}"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> 首页</a></li>
+            <li><a href="{{url_for('get_report_my')}}"><span class="glyphicon glyphicon-th-list" aria-hidden="true"></span> 我的小结</a></li>
+            <li><a href="{{url_for('get_report_create')}}"><span class="glyphicon glyphicon-file" aria-hidden="true"></span> 填写小结</a></li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
           {% if session.get('verified', None) %}
             <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">你好，<strong>ACM{{session['user_year']}}-{{session['user_name']}}</strong> <span class="caret"></span></a>
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-user" aria-hidden="true"></span> 你好，<strong>ACM{{session['user_year']}}-{{session['user_name']}}</strong> <span class="caret"></span></a>
               <ul class="dropdown-menu">
-                <li><a href="{{url_for('get_logout')}}">登出</a></li>
+                <li><a href="{{url_for('get_logout')}}"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span> 登出</a></li>
               </ul>
             </li>
           {% else %}
-            <li><a href="{{url_for('get_login')}}">登入</a></li>
+            <li><a href="{{url_for('get_login')}}"><span class="glyphicon glyphicon-log-in" aria-hidden="true"></span> 登入</a></li>
           {% endif %}
           </ul>
         </div><!--/.nav-collapse -->
