@@ -22,6 +22,10 @@ def nl2p(text):
     return ''.join("<p>%s</p>" % line for line in text.splitlines() if line)
 
 
+def normalize_nl(text):
+    return '\n\n'.join(line for line in text.splitlines() if line)
+
+
 def semester_name(year, season):
     if season == 'fall':
         return '%d-%d学年秋季学期' % (year, year+1)

@@ -1,0 +1,3 @@
+Flask==0.11.1
+pytz==2015.7
+SQLAlchemy==1.1.0b3

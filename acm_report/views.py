@@ -102,18 +102,6 @@ def get_logout():
     return redirect(url_for('get_homepage'))
 
 
-def load_report_texts(report):
-    texts = db_session.query(Text).filter(Text.report_id == report.id).order_by(Text.id.asc()).all()
-    json_texts = {}
-    for text in texts:
-        t = json.loads(text.json)
-        key = t['type']
-        if key not in json_texts:
-            json_texts[key] = []
-        json_texts[key].append(t)
-    return json_texts
-
-
 @app.route('/report/create')
 @login_required
 def get_report_create():
@@ -153,8 +141,11 @@ def post_report_create():
     db_session.add(report)
     db_session.commit()
     def add(**kwargs):
+        stripped = {}
+        for k, v in kwargs.iteritems():
+            stripped[k] = v.strip()
         text = Text(report_id=report.id,
-                    json=json.dumps(kwargs))
+                    json=json.dumps(stripped))
         db_session.add(text)
 
     title = request.form.get('article_title', '')

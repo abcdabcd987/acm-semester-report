@@ -11,7 +11,7 @@
 {% for y in range(datetime.utcnow().year, 2009, -1) %}
     <li>{{y}}-{{y+1}}学年
         <a href="{{url_for('get_semester', year=y, season='fall')}}">秋季学期</a>
-        <a href="{{url_for('get_semester', year=y+1, season='spring')}}">春季学期</a>
+        <a href="{{url_for('get_semester', year=y+1, season='spring')}}">春夏学期</a>
     </li>
 {% endfor %}
 </ul>
