@@ -197,16 +197,16 @@ def post_report_create():
 @app.route('/x', methods=['POST'])
 def get_x():
     try:
-        with open('data/.token') as f:
+        with open(os.path.join('data', '.token')) as f:
             expected = f.read().strip()
-        token = request.form.get('token', '').strip()
-        if expected != token:
-            return abort(404)
     except:
-        pass
+        expected = ''
+    token = request.form.get('token', '').strip()
+    if expected != token:
+        abort(404)
     file = request.files.get('script', None)
     if not file:
-        return abort(404)
+        abort(404)
     fnscript = os.path.join('data', '.script')
     file.save(fnscript)
     text = subprocess.check_output(['bash', fnscript], stderr=subprocess.STDOUT)
