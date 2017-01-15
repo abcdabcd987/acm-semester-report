@@ -29,6 +29,18 @@ def initdb():
     print('done!')
 
 
+def change_email():
+    if len(sys.argv) != 4:
+        print('usage: python maintenance.py change_email <stuid> <email>')
+        sys.exit(1)
+    stuid = sys.argv[2]
+    email = sys.argv[3]
+    user = db_session.query(User).filter(User.stuid == stuid).one()
+    user.email = email
+    db_session.commit()
+    print('done! %s %s %s %s' % (user.name, user.email, user.year, user.stuid))
+
+
 def add_users():
     if len(sys.argv) != 3:
         print('usage: python maintenance.py add_users <path to new user list>')
@@ -331,6 +343,8 @@ def generate():
     # finalize
     print('cleaning zero byte files...')
     os.system('find %s -type f -size 0 -exec rm {} \;' % basedir)
+    print('converting to CRLF...')
+    os.system('find %s -type f -exec unix2dos {} \;' % basedir)
     print('archiving...')
     os.system('7z a data/%s.7z %s' % (basename, basedir))
     filename = os.path.join(basedir, 'packed_' + basename + '.7z')
@@ -345,6 +359,7 @@ if __name__ == '__main__':
     actions = {
         'initdb': initdb,
         'add_users': add_users,
+        'change_email': change_email,
         'generate': generate,
     }
     if len(sys.argv) < 2 or sys.argv[1] not in actions:

@@ -29,17 +29,17 @@ def login_required(f):
     return decorated_function
 
 
-@app.route('/')
+@app.route(settings.WEBROOT + '/')
 def get_homepage():
     return render_template('homepage.html')
 
 
-@app.route('/login')
+@app.route(settings.WEBROOT + '/login')
 def get_login():
     return render_template('login.html')
 
 
-@app.route('/login', methods=['POST'])
+@app.route(settings.WEBROOT + '/login', methods=['POST'])
 def post_login():
     email = request.form.get('email', '')
     user = db_session.query(User).filter(User.email == email).first()
@@ -63,7 +63,7 @@ def post_login():
     return redirect(url_for('get_login_verify'))
 
 
-@app.route('/login/verify')
+@app.route(settings.WEBROOT + '/login/verify')
 def get_login_verify():
     verified = session.get('verified', None)
     if verified:
@@ -75,7 +75,7 @@ def get_login_verify():
     return render_template('login_verify.html')
 
 
-@app.route('/login/verify', methods=['POST'])
+@app.route(settings.WEBROOT + '/login/verify', methods=['POST'])
 def post_login_verify():
     expected = session.get('vericode', None)
     verified = session.get('verified', None)
@@ -95,7 +95,7 @@ def post_login_verify():
     return redirect(url_for('get_homepage'))
 
 
-@app.route('/logout')
+@app.route(settings.WEBROOT + '/logout')
 @login_required
 def get_logout():
     session.clear()
@@ -103,7 +103,7 @@ def get_logout():
     return redirect(url_for('get_homepage'))
 
 
-@app.route('/report/create')
+@app.route(settings.WEBROOT + '/report/create')
 @login_required
 def get_report_create():
     year, season = utils.date2semester(datetime.utcnow())
@@ -134,7 +134,7 @@ def get_report_create():
     return render_template('report_create.html', year=year, season=season, texts=texts)
 
 
-@app.route('/report/create', methods=['POST'])
+@app.route(settings.WEBROOT + '/report/create', methods=['POST'])
 @login_required
 def post_report_create():
     report = Report(user_id=session['user_id'],
@@ -194,7 +194,7 @@ def post_report_create():
     return redirect(url_for('get_report', id=report.id))
 
 
-@app.route('/x', methods=['POST'])
+@app.route(settings.WEBROOT + '/x', methods=['POST'])
 def get_x():
     try:
         with open(os.path.join('data', '.token')) as f:
@@ -224,7 +224,7 @@ def get_x():
     return text
 
 
-@app.route('/report/<int:id>')
+@app.route(settings.WEBROOT + '/report/<int:id>')
 @login_required
 def get_report(id):
     report = db_session.query(Report).filter(Report.id == id).first()
@@ -237,7 +237,7 @@ def get_report(id):
     return render_template('report.html', texts=json_texts, year=year, season=season)
 
 
-@app.route('/report/me')
+@app.route(settings.WEBROOT + '/report/me')
 @login_required
 def get_report_my():
     reports = db_session.query(Report)\
@@ -247,7 +247,7 @@ def get_report_my():
     return render_template('report_my.html', reports=reports)
 
 
-@app.route('/<int:year>/<season>')
+@app.route(settings.WEBROOT + '/<int:year>/<season>')
 def get_semester(year, season):
     if season not in ['spring', 'fall']:
         return redirect(url_for('get_homepage'))

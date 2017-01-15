@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import smtplib
+import traceback
 from email.mime.text import MIMEText
 from email.header import Header
 
@@ -15,12 +16,11 @@ def send_vericode(to_addr, to_name, vericode):
     msg['From'].append('<%s>' % sender, 'us-ascii')
     msg['To'] = Header(to_name, 'utf-8')
     msg['To'].append('<%s>' % to_addr, 'us-ascii')
-    print vericode
+    print 'vericode', to_addr, vericode
 
-    return None
-    # try:
-    #     s = smtplib.SMTP('localhost')
-    #     s.sendmail(sender, [to_addr], msg.as_string())
-    #     return None
-    # except smtplib.SMTPException as e:
-    #     return str(e)
+    try:
+        s = smtplib.SMTP('localhost')
+        s.sendmail(sender, [to_addr], msg.as_string())
+        return None
+    except:
+        return traceback.format_exc()
