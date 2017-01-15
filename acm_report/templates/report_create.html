@@ -75,9 +75,10 @@
 <p>如自己是助教，需要作自我评价、例举影响深刻的学生与事，以及建议。否则请留空。</p>
 {{ textarea("teach", "正文", texts['teach'][0]['body'], rows=20, required=False) }}
 
-<hr><h2>5. 实验室实习小结</h2>
-<p>进入实验室后需要填写。否则请留空。</p>
-{{ textarea("lab", "正文", texts['lab'][0]['body'], rows=20, required=False) }}
+<hr><h2><del>5. 实验室实习小结</del></h2>
+<!--<p>进入实验室后需要填写。否则请留空。</p>
+{{ textarea("lab", "正文", texts['lab'][0]['body'], rows=20, required=False) }}-->
+<p>请根据俞老师的邮件要求完成并发送给俞老师。</p>
 
 <hr><h2>6. 同学评价</h2>
 <p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少5位。</p>
@@ -112,7 +113,7 @@
 {% endfor %}
 {{ text_tool(num_extra=max(0, len(texts['ta'])-3)) }}
 
-<hr><h2>8. 班级的建议</h2>
+<hr><h2>9. 班级的建议</h2>
 <p>尽量具有可操作性。</p>
 {{ textarea("advice", "正文", texts['advice'][0]['body'], rows=5) }}
 
