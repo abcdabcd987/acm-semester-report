@@ -32,26 +32,26 @@
 {{ x['body'] | nl2p | safe }}
 -->
 
-<hr><h2>6. 同学评价</h2>
+<hr><h2>5. 同学评价</h2>
 {% for x in texts['peer'] %}
 <h4>{{ x['name'] }}</h4>
 {{ x['body'] | nl2p | safe }}
 {% endfor %}
 
-<hr><h2>7. 同学好评</h2>
+<hr><h2>6. 同学好评</h2>
 {% for x in texts['positive'] %}
 <h4>{{ x['name'] }}</h4>
 {{ x['body'] | nl2p | safe }}
 {% endfor %}
 
-<hr><h2>8. 同学差评</h2>
+<hr><h2>7. 同学差评</h2>
 {% for x in texts['negative'] %}
 <h4>{{ x['name'] }}</h4>
 {{ x['body'] | nl2p | safe }}
 {% endfor %}
 
 {% set x = texts['advice'][0] %}
-<hr><h2>9. 班级建议</h2>
+<hr><h2>8. 班级建议</h2>
 {{ x['body'] | nl2p | safe }}
 
 {% endblock %}

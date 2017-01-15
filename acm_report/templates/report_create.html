@@ -79,7 +79,7 @@
 <p>进入实验室后需要填写。否则请留空。</p>
 {{ textarea("lab", "正文", texts['lab'][0]['body'], rows=20, required=False) }}-->
 
-<hr><h2>6. 同学评价</h2>
+<hr><h2>5. 同学评价</h2>
 <p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少5位。</p>
 {% for i in range(max(5, len(texts['peer']))) %}
   <div class="text-wrapper">
@@ -90,7 +90,7 @@
 {% endfor %}
 {{ text_tool(num_extra=max(0, len(texts['peer'])-5)) }}
 
-<hr><h2>7. 同学好评</h2>
+<hr><h2>6. 同学好评</h2>
 <p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少3位，且从高到低排序。要求每个人评出班级中3位最努力、进步最快的学生，且必须说明理由及事例。如果包括自己的话必须增加1个人。</p>
 {% for i in range(max(3, len(texts['positive']))) %}
   <div class="text-wrapper">
@@ -101,7 +101,7 @@
 {% endfor %}
 {{ text_tool(num_extra=max(0, len(texts['positive'])-3)) }}
 
-<hr><h2>8. 同学差评</h2>
+<hr><h2>7. 同学差评</h2>
 <p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少3位，且从高到低排序。要求每个人评出班级中3位最不努力、最浪费时间的学生，且必须说明理由及事例。如果包括自己的话必须增加1个人。</p>
 {% for i in range(max(3, len(texts['negative']))) %}
   <div class="text-wrapper">
@@ -112,7 +112,7 @@
 {% endfor %}
 {{ text_tool(num_extra=max(0, len(texts['ta'])-3)) }}
 
-<hr><h2>9. 班级的建议</h2>
+<hr><h2>8. 班级的建议</h2>
 <p>尽量具有可操作性。</p>
 {{ textarea("advice", "正文", texts['advice'][0]['body'], rows=5) }}
 
