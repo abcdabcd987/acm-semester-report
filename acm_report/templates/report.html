@@ -26,9 +26,11 @@
 <hr><h2>4. 助教工作小结</h2>
 {{ x['body'] | nl2p | safe }}
 
+<!--
 {% set x = texts['lab'][0] %}
 <hr><h2>5. 实验室实习小结</h2>
 {{ x['body'] | nl2p | safe }}
+-->
 
 <hr><h2>6. 同学评价</h2>
 {% for x in texts['peer'] %}
