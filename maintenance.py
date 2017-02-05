@@ -145,13 +145,13 @@ def generate():
                 except:
                     pass
 
-                f.write('## 5. 实验室实习小结\n\n')
-                try:
-                    f.write(utils.normalize_nl(t['lab'][0]['body']) + '\n\n')
-                except:
-                    pass
+                # f.write('## 5. 实验室实习小结\n\n')
+                # try:
+                #     f.write(utils.normalize_nl(t['lab'][0]['body']) + '\n\n')
+                # except:
+                #     pass
 
-                f.write('## 6. 同学评价\n\n')
+                f.write('## 5. 同学评价\n\n')
                 try:
                     for x in t['peer']:
                         f.write('### %s\n\n' % x['name'])
@@ -159,7 +159,7 @@ def generate():
                 except:
                     pass
 
-                f.write('## 7. 同学好评\n\n')
+                f.write('## 6. 同学好评\n\n')
                 try:
                     for x in t['positive']:
                         f.write('### %s\n\n' % x['name'])
@@ -167,7 +167,7 @@ def generate():
                 except:
                     pass
 
-                f.write('## 8. 同学差评\n\n')
+                f.write('## 7. 同学差评\n\n')
                 try:
                     for x in t['negative']:
                         f.write('### %s\n\n' % x['name'])
@@ -175,7 +175,7 @@ def generate():
                 except:
                     pass
 
-                f.write('## 9. 班级建议\n\n')
+                f.write('## 8. 班级建议\n\n')
                 try:
                     f.write(utils.normalize_nl(t['advice'][0]['body']) + '\n\n')
                 except:
@@ -260,25 +260,25 @@ def generate():
             except:
                 pass
 
-    # 5. 实验室实习小结
-    print('generating labs...')
-    dirname = os.path.join(basedir, '5实验室实习小结')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
-        with codecs.open(filename, 'w', 'utf-8') as f:
-            for u in users[y]:
-                r = last_report.get(u.id, None)
-                if not r: continue
-                t = texts[r.id]
-                try:
-                    body = t['lab'][0]['body']
-                    if body:
-                        f.write('## ACM%d-%s\n\n' % (u.year, u.name))
-                        f.write(utils.normalize_nl(body) + '\n\n\n\n')
-                except:
-                    print('error when dealing with ACM%d-%s' % (u.year, u.name))
-                    traceback.print_exc()
+    # # 5. 实验室实习小结
+    # print('generating labs...')
+    # dirname = os.path.join(basedir, '5实验室实习小结')
+    # os.mkdir(dirname)
+    # for y in xrange(uyear_st, uyear_ed+1):
+    #     filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
+    #     with codecs.open(filename, 'w', 'utf-8') as f:
+    #         for u in users[y]:
+    #             r = last_report.get(u.id, None)
+    #             if not r: continue
+    #             t = texts[r.id]
+    #             try:
+    #                 body = t['lab'][0]['body']
+    #                 if body:
+    #                     f.write('## ACM%d-%s\n\n' % (u.year, u.name))
+    #                     f.write(utils.normalize_nl(body) + '\n\n\n\n')
+    #             except:
+    #                 print('error when dealing with ACM%d-%s' % (u.year, u.name))
+    #                 traceback.print_exc()
 
     # peer/positive/negative review
     print('building peer/positive/negative review map...')
@@ -305,7 +305,7 @@ def generate():
 
     for i, (k, kname) in enumerate(zip(review_types, review_name)):
         print('generating %s reviews...' % k)
-        dirname = os.path.join(basedir, '%d%s' % (i+6, kname))
+        dirname = os.path.join(basedir, '%d%s' % (i+5, kname))
         os.mkdir(dirname)
         for y in xrange(uyear_st, uyear_ed+1):
             filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
@@ -321,7 +321,7 @@ def generate():
 
     # 9. 班级建议
     print('generating labs...')
-    dirname = os.path.join(basedir, '9班级建议')
+    dirname = os.path.join(basedir, '8班级建议')
     os.mkdir(dirname)
     for y in xrange(uyear_st, uyear_ed+1):
         filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
