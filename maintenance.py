@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, division, unicode_literals
 import os
+import io
+import re
 import sys
+import copy
 import time
+import yaml
 import json
 import codecs
 import hashlib
 import traceback
+from pprint import pprint
 from datetime import datetime
 import acm_report.utils as utils
 from acm_report.models import *
@@ -354,6 +359,123 @@ def generate():
     print('packed at', filename)
 
 
+def validate_form(config):
+    is_jinja = re.compile(r'({{.*?}})|({%.*?%})')
+    config = copy.deepcopy(config)
+
+    title = config.pop('title')
+    assert type(title) in [str, unicode]
+    start_time = config.pop('start_time')
+    assert type(start_time) is datetime
+    end_time = config.pop('end_time')
+    assert type(end_time) is datetime
+    assert start_time < end_time
+    students = config.pop('students')
+    assert type(students) is list
+    for student in students:
+        assert type(student) is int
+    sections = config.pop('sections')
+    assert type(sections) is list
+    assert not config
+
+    section_ids = []
+    for section in sections:
+        title = section.pop('title')
+        assert type(title) in [str, unicode]
+        id = section.pop('id')
+        assert type(id) in [str, unicode]
+        assert id not in section_ids
+        section_ids.append(id)
+        description = section.pop('description', '')
+        assert type(description) in [str, unicode]
+        fields = section.pop('fields')
+        assert type(fields) is list
+        reports = section.pop('reports')
+        assert type(reports) is list
+        if 'repeat' in section:
+            repeat = section.pop('repeat')
+            assert type(repeat) is dict
+        else:
+            repeat = None
+        assert not section
+
+        field_ids = []
+        for field in fields:
+            assert type(field) is dict
+            id = field.pop('id')
+            assert type(id) in [str, unicode]
+            assert id not in field_ids
+            field_ids.append(id)
+            type_ = field.pop('type')
+            assert type_ in ['string', 'text']
+            if type_ == 'text':
+                rows = field.pop('rows')
+                assert type(rows) is int
+            label = field.pop('label')
+            assert type(label) in [str, unicode]
+            assert not field
+        assert len(field_ids) == len(fields)
+
+        if repeat:
+            min = repeat.pop('min')
+            assert type(min) is int
+            assert not repeat
+
+        for report in reports:
+            assert type(report) is dict
+            file_by = report.pop('file_by')
+            assert file_by in ['per_student', 'per_class']
+            directory = report.pop('directory')
+            assert type(directory) in [str, unicode]
+            assert not is_jinja.match(directory)
+            tostring = report.pop('tostring')
+            assert type(tostring) in [str, unicode]
+            if 'reductions' in report:
+                reductions = report.pop('reductions')
+                assert type(reductions) is dict
+                for reduction in reductions.values():
+                    assert type(reduction) is dict
+                    key = reduction.pop('key')
+                    assert not is_jinja.match(key)
+                    assert type(key) in [str, unicode]
+                    value = reduction.pop('value')
+                    assert type(value) in [str, unicode]
+                    assert not is_jinja.match(value)
+                    assert not reduction
+            assert not report
+
+
+def set_form(filename, form):
+    with io.open(filename, 'r', encoding='utf-8') as f:
+        config_str = f.read()
+    config = yaml.load(config_str)
+    validate_form(config)
+
+    form.title = config['title']
+    form.start_time = config['start_time']
+    form.end_time = config['end_time']
+    form.config_yaml = config_str
+    db_session.add(form)
+    db_session.commit()
+    print('success! the form id is:', form.id)
+
+
+def add_form():
+    if len(sys.argv) != 3:
+        print('usage: python maintenance.py add_form <path to yaml>')
+        sys.exit(1)
+    form = Form()
+    set_form(sys.argv[2], form)
+
+
+def update_form():
+    if len(sys.argv) != 4:
+        print('usage: python maintenance.py update_form <form_id> <path to yaml>')
+        sys.exit(1)
+    form_id = int(sys.argv[2])
+    form = db_session.query(Form).filter(Form.id == form_id).one()
+    set_form(sys.argv[3], form)
+
 
 if __name__ == '__main__':
     actions = {
@@ -361,6 +483,8 @@ if __name__ == '__main__':
         'add_users': add_users,
         'change_email': change_email,
         'generate': generate,
+        'add_form': add_form,
+        'update_form': update_form,
     }
     if len(sys.argv) < 2 or sys.argv[1] not in actions:
         print('usage: python maintenance.py ACTION')

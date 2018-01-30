@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 import os
 import uuid
+import yaml
 import json
 import functools
 import subprocess
@@ -31,7 +32,10 @@ def login_required(f):
 
 @app.route(settings.WEBROOT + '/')
 def get_homepage():
-    return render_template('homepage.html')
+    forms = db_session.query(Form).order_by(Form.id.desc()).all()
+    now = datetime.utcnow()
+    active = set(form.id for form in forms if form.start_time < now < form.end_time)
+    return render_template('homepage.html', forms=forms, active=active)
 
 
 @app.route(settings.WEBROOT + '/login')
@@ -53,6 +57,7 @@ def post_login():
     session['user_email'] = user.email
     session['user_year'] = user.year
     session['user_name'] = user.name
+    session['user_stuid'] = user.stuid
     session['vericode'] = uuid.uuid4().hex
     session['verified'] = False
     err = send_vericode(user.email, 'ACM%d-%s' % (user.year, user.name), session['vericode'])
@@ -103,92 +108,57 @@ def get_logout():
     return redirect(url_for('get_homepage'))
 
 
-@app.route(settings.WEBROOT + '/report/create')
+@app.route(settings.WEBROOT + '/report/create/<int:form_id>')
 @login_required
-def get_report_create():
-    year, season = utils.date2semester(datetime.utcnow())
-    if season == 'spring':
-        date_st = datetime(year, 3, 1)
-        date_ed = datetime(year, 10, 1)
-    else:
-        date_st = datetime(year, 10, 1)
-        date_ed = datetime(year+1, 3, 1)
+def get_report_create(form_id):
+    form = db_session.query(Form).filter(Form.id == form_id).first()
+    if not form:
+        abort(404)
+    config = yaml.load(form.config_yaml)
+    if session['user_year'] not in config['students']:
+        abort(404)
 
-    report = db_session.query(Report)\
-                       .filter(Report.user_id == session['user_id'])\
-                       .filter(Report.created_at >= date_st)\
-                       .filter(Report.created_at < date_ed)\
-                       .order_by(Report.id.desc())\
-                       .first()
-    texts = load_report_texts(report) if report else {}
-    if 'article' not in texts: texts['article'] = [{'title': '', 'body': ''}]
-    if 'course' not in texts: texts['course'] = [{'course': '', 'teacher': '', 'body': ''}]
-    if 'ta' not in texts: texts['ta'] = [{'course': '', 'ta': '', 'body': ''}]
-    if 'teach' not in texts: texts['teach'] = [{'body': ''}]
-    if 'lab' not in texts: texts['lab'] = [{'body': ''}]
-    if 'peer' not in texts: texts['peer'] = [{'name': '', 'body': ''}] * 5
-    if 'positive' not in texts: texts['positive'] = [{'name': '', 'body': ''}] * 3
-    if 'negative' not in texts: texts['negative'] = [{'name': '', 'body': ''}] * 3
-    if 'advice' not in texts: texts['advice'] = [{'body': ''}]
+    latest_report = db_session.query(Report)\
+                              .filter(Report.user_id == session['user_id'])\
+                              .filter(Report.form_id == form_id)\
+                              .order_by(Report.id.desc()).first()
+    report = json.loads(latest_report.json) if latest_report else None
 
-    return render_template('report_create.html', year=year, season=season, texts=texts)
+    return render_template('report_create.html', form=form, config=config, report=report)
 
 
-@app.route(settings.WEBROOT + '/report/create', methods=['POST'])
+@app.route(settings.WEBROOT + '/report/create/<int:form_id>', methods=['POST'])
 @login_required
-def post_report_create():
+def post_report_create(form_id):
+    form = db_session.query(Form).filter(Form.id == form_id).first()
+    if not form:
+        abort(404)
+    config = yaml.load(form.config_yaml)
+    if session['user_year'] not in config['students']:
+        abort(404)
+
+    content = {}
+    for section in config['sections']:
+        repeat = 'repeat' in section
+        l = []
+        for field in section['fields']:
+            if repeat:
+                values = request.form.getlist(section['id'] + '.' + field['id'] + '[]')
+                for _ in xrange(len(values) - len(l)):
+                    l.append({f['id']: '' for f in section['fields']})
+                for i, value in enumerate(values):
+                    l[i][field['id']] = value.strip()
+            else:
+                if not l:
+                    l.append({f['id']: '' for f in section['fields']})
+                l[0][field['id']] = request.form.get(section['id'] + '.' + field['id'], '').strip()
+        content[section['id']] = l if repeat else l[0]
+    print(content)
+
     report = Report(user_id=session['user_id'],
+                    json=json.dumps(content),
                     created_at=datetime.utcnow())
     db_session.add(report)
-    db_session.commit()
-    def add(**kwargs):
-        stripped = {}
-        for k, v in kwargs.iteritems():
-            stripped[k] = v.strip()
-        text = Text(report_id=report.id,
-                    json=json.dumps(stripped))
-        db_session.add(text)
-
-    title = request.form.get('article_title', '')
-    body = request.form.get('article_text', '')
-    add(type='article', title=title, body=body)
-
-    courses = request.form.getlist('course_review_courses[]')
-    names = request.form.getlist('course_review_teachers[]')
-    texts = request.form.getlist('course_review_texts[]')
-    for c, n, t in zip(courses, names, texts):
-        add(type='course', course=c, teacher=n, body=t)
-
-    courses = request.form.getlist('ta_review_courses[]')
-    names = request.form.getlist('ta_review_tas[]')
-    texts = request.form.getlist('ta_review_texts[]')
-    for c, n, t in zip(courses, names, texts):
-        add(type='ta', course=c, ta=n, body=t)
-
-    t = request.form.get('teach', '')
-    add(type='teach', body=t)
-
-    t = request.form.get('lab', '')
-    add(type='lab', body=t)
-
-    names = request.form.getlist('peer_review_names[]')
-    texts = request.form.getlist('peer_review_texts[]')
-    for n, t in zip(names, texts):
-        add(type='peer', name=n, body=t)
-
-    names = request.form.getlist('positive_review_names[]')
-    texts = request.form.getlist('positive_review_texts[]')
-    for n, t in zip(names, texts):
-        add(type='positive', name=n, body=t)
-
-    names = request.form.getlist('negative_review_names[]')
-    texts = request.form.getlist('negative_review_texts[]')
-    for n, t in zip(names, texts):
-        add(type='negative', name=n, body=t)
-
-    t = request.form.get('advice', '')
-    add(type='advice', body=t)
-
     db_session.commit()
     flash('提交成功', 'success')
     return redirect(url_for('get_report', id=report.id))
@@ -228,52 +198,48 @@ def get_x():
 @login_required
 def get_report(id):
     report = db_session.query(Report).filter(Report.id == id).first()
-    if not report or report.user_id != session['user_id']:
-        flash('该小结不存在', 'warning')
-        return redirect(url_for('get_homepage'))
+    form = db_session.query(Form).filter(Form.id == report.form_id).first()
+    if not report or report.user_id != session['user_id'] or not form:
+        abort(404)
 
-    json_texts = load_report_texts(report)
-    year, season = utils.date2semester(report.created_at)
-    return render_template('report.html', texts=json_texts, year=year, season=season)
+    config = yaml.load(form.config_yaml)
+    report = json.loads(report.json)
+    return render_template('report.html', config=config, report=report)
 
 
 @app.route(settings.WEBROOT + '/report/me')
 @login_required
 def get_report_my():
-    reports = db_session.query(Report)\
-                        .filter(Report.user_id == session['user_id'])\
-                        .order_by(Report.id.desc())\
-                        .all()
-    return render_template('report_my.html', reports=reports)
+    pass
 
 
-@app.route(settings.WEBROOT + '/<int:year>/<season>')
-def get_semester(year, season):
-    if season not in ['spring', 'fall']:
-        return redirect(url_for('get_homepage'))
-    query = db_session.query(Report)
-    if season == 'fall':
-        uyear_st, uyear_ed = year-3, year
-        query = query.filter(Report.created_at >= datetime(year, 10, 1))\
-                     .filter(Report.created_at < datetime(year+1, 3, 1))
-    else:
-        uyear_st, uyear_ed = year-4, year-1
-        query = query.filter(Report.created_at >= datetime(year, 3, 1))\
-                     .filter(Report.created_at < datetime(year, 10, 1))
-    reports = query.all()
+@app.route(settings.WEBROOT + '/form/<int:form_id>')
+def get_form(form_id):
+    form = db_session.query(Form).filter(Form.id == form_id).first()
+    if not form:
+        abort(404)
+    reports = db_session.query(Report).filter(Report.created_at.between(form.start_time, form.end_time)).all()
     last_report = {}
     for r in reports:
         last = last_report.get(r.user_id, None)
         if not last or last < r.created_at:
             last_report[r.user_id] = r.created_at
-    users = { y: [] for y in xrange(uyear_st, uyear_ed+1) }
-    query = db_session.query(User).filter(uyear_st <= User.year).filter(User.year <= uyear_ed)
-    for u in query.order_by(User.stuid.asc()).all():
+    config = yaml.load(form.config_yaml)
+    users = { y: [] for y in config['students'] }
+    for u in db_session.query(User).filter(User.year.in_(config['students'])).order_by(User.stuid.asc()).all():
         users[u.year].append(u)
-    return render_template('semester.html',
-                           year=year,
-                           season=season,
+    if 'user_year' in session and session['user_year'] in config['students']:
+        my_reports = db_session.query(Report).filter(Report.user_id == session['user_id']).order_by(Report.id.desc()).all()
+    else:
+        my_reports = []
+    return render_template('form.html',
+                           form=form,
+                           config=config,
                            reports=last_report,
                            users=users,
-                           years=range(uyear_ed, uyear_st-1, -1),
-                           ynames=['大一', '大二', '大三', '大四'])
+                           my_reports=my_reports)
+
+
+@app.route(settings.WEBROOT + '/<int:year>/<season>')
+def get_semester(year, season):
+    pass

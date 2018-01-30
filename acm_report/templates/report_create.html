@@ -1,8 +1,8 @@
 {% extends "layout.html" %}
-{% block title %}{{ semester_name(year, season) }}小结{% endblock %}
+{% block title %}填写 {{ config.title }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>{{ semester_name(year, season) }}小结</h1>
+  <h1>填写 {{ config.title }}</h1>
 </div>
 
 <p>可重复提交。以最后一次提交为准。</p>
@@ -13,7 +13,7 @@
 {% macro input(name, title, value) -%}
 <div class="form-group">
   <label class="col-md-2 control-label">{{ title }}</label>  
-  <div class="col-md-8"><input type="text" class="form-control input-md" name="{{ name }}" value='{{value}}' required></div>
+  <div class="col-md-8"><input type="text" class="form-control input-md" name="{{ name }}" value='{{value}}'></div>
 </div>
 {%- endmacro %}
 {% macro hr() -%}
@@ -22,10 +22,10 @@
   <div class="col-md-8"><hr></div>
 </div>
 {%- endmacro %}
-{% macro textarea(name, title, value, required=True, rows=4) -%}
+{% macro textarea(name, title, value, rows=4) -%}
 <div class="form-group">
   <label class="col-md-2 control-label">{{ title }}</label>  
-  <div class="col-md-8"><textarea name="{{ name }}" class="form-control input-md" {% if required %}required{% endif %} rows="{{ rows }}">{{value}}</textarea></div>
+  <div class="col-md-8"><textarea name="{{ name }}" class="form-control input-md" rows="{{ rows }}">{{value}}</textarea></div>
 </div>
 {%- endmacro %}
 {% macro text_tool(num_extra=0) -%}
@@ -43,80 +43,50 @@
   <div class="col-md-8"><input type="text" class="form-control input-md" value="ACM{{ session['user_year'] }}-{{ session['user_name'] }}" disabled></div>
 </div>
 
-<h2>1. 正文部分</h2>
-<p>用一简短的词或句作小结标题。如果需要使用富文本格式，请单独发送给俞老师。</p>
-{{ input("article_title", "标题", texts['article'][0]['title']) }}
-{{ textarea("article_text", "正文", texts['article'][0]['body'], rows=20) }}
-
-<hr><h2>2. 课程评价</h2>
-<p>所有课程，包括课程设计。</p>
-{% for i in range(max(1, len(texts['course']))) %}
-  <div class="text-wrapper">
-  {{ input("course_review_courses[]", "课程名称", texts['course'][i]['course']) }}
-  {{ input("course_review_teachers[]", "授课教师", texts['course'][i]['teacher']) }}
-  {{ textarea("course_review_texts[]", "评价正文", texts['course'][i]['body']) }}
-  {{ hr() }}
-  </div>
+{% for section in config.sections %}
+  {% if 'repeat' in section %}
+    {% set num_repeat = section.repeat.min %}
+    {% if report and section.id in report %}
+      {% set num_repeat = max(num_repeat, len(report[section.id])) %}
+    {% endif %}
+  {% else %}
+    {% set num_repeat = 1 %}
+  {% endif %}
+  <h2>{{ loop.index }}. {{ section.title }}</h2>
+  {{ section.get('description', '').format(form_id=form.id, webroot=WEBROOT) | markdown | safe }}
+  {% for i in range(num_repeat) %}
+    <div class="text-wrapper">
+    {% for field in section.fields %}
+      {% set field_id = section.id + '.' + field.id %}
+      {% if 'repeat' in section %}
+        {% set field_id = field_id + '[]' %}
+      {% endif %}
+      {% set value = '' %}
+      {% if report and section.id in report %}
+        {% if 'repeat' in section %}
+          {% set d = report[section.id][i] if i < len(report[section.id]) else None %}
+        {% else %}
+          {% set d = report[section.id] %}
+        {% endif %}
+        {% if d and field.id in d %}
+          {% set value = d[field.id] %}
+        {% endif %}
+      {% endif %}
+      {% if field.type == 'string' %}
+        {{ input(field_id, field.label, value) }}
+      {% elif field.type == 'text' %}
+        {{ textarea(field_id, field.label, value, rows=field.rows)}}
+      {% endif %}
+    {% endfor %}
+    {{ hr() }}
+    </div>
+  {% endfor %}
+  {% if 'repeat' in section %}
+    {{ text_tool(num_extra=num_repeat-section.repeat.min) }}
+  {% endif %}
+  <hr>
 {% endfor %}
-{{ text_tool(num_extra=max(0, len(texts['course'])-1)) }}
 
-<hr><h2>3. 助教评价</h2>
-{% for i in range(max(1, len(texts['ta']))) %}
-  <div class="text-wrapper">
-  {{ input("ta_review_courses[]", "课程名称", texts['ta'][i]['course']) }}
-  {{ input("ta_review_tas[]", "助教姓名", texts['ta'][i]['ta']) }}
-  {{ textarea("ta_review_texts[]", "评价正文", texts['ta'][i]['body']) }}
-  {{ hr() }}
-  </div>
-{% endfor %}
-{{ text_tool(num_extra=max(0, len(texts['ta'])-1)) }}
-
-<hr><h2>4. 助教工作小结</h2>
-<p>如自己是助教，需要作自我评价、例举影响深刻的学生与事，以及建议。否则请留空。</p>
-{{ textarea("teach", "正文", texts['teach'][0]['body'], rows=20, required=False) }}
-
-<!--<hr><h2><del>5. 实验室实习小结</del></h2>
-<p>进入实验室后需要填写。否则请留空。</p>
-{{ textarea("lab", "正文", texts['lab'][0]['body'], rows=20, required=False) }}-->
-
-<hr><h2>5. 同学评价</h2>
-<p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少5位。</p>
-{% for i in range(max(5, len(texts['peer']))) %}
-  <div class="text-wrapper">
-  {{ input("peer_review_names[]", "同学姓名", texts['peer'][i]['name']) }}
-  {{ textarea("peer_review_texts[]", "评价正文", texts['peer'][i]['body']) }}
-  {{ hr() }}
-  </div>
-{% endfor %}
-{{ text_tool(num_extra=max(0, len(texts['peer'])-5)) }}
-
-<hr><h2>6. 同学好评</h2>
-<p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少3位，且从高到低排序。要求每个人评出班级中3位最努力、进步最快的学生，且必须说明理由及事例。如果包括自己的话必须增加1个人。</p>
-{% for i in range(max(3, len(texts['positive']))) %}
-  <div class="text-wrapper">
-  {{ input("positive_review_names[]", "同学姓名", texts['positive'][i]['name']) }}
-  {{ textarea("positive_review_texts[]", "评价正文", texts['positive'][i]['body']) }}
-  {{ hr() }}
-  </div>
-{% endfor %}
-{{ text_tool(num_extra=max(0, len(texts['positive'])-3)) }}
-
-<hr><h2>7. 同学差评</h2>
-<p>请确保姓名填写正确。你可以在<a href="{{url_for('get_semester', year=year, season=season)}}">这里</a>看到名表。至少3位，且从高到低排序。要求每个人评出班级中3位最不努力、最浪费时间的学生，且必须说明理由及事例。如果包括自己的话必须增加1个人。</p>
-{% for i in range(max(3, len(texts['negative']))) %}
-  <div class="text-wrapper">
-  {{ input("negative_review_names[]", "同学姓名", texts['negative'][i]['name']) }}
-  {{ textarea("negative_review_texts[]", "评价正文", texts['negative'][i]['body']) }}
-  {{ hr() }}
-  </div>
-{% endfor %}
-{{ text_tool(num_extra=max(0, len(texts['ta'])-3)) }}
-
-<hr><h2>8. 班级的建议</h2>
-<p>尽量具有可操作性。</p>
-{{ textarea("advice", "正文", texts['advice'][0]['body'], rows=5) }}
-
-<hr>
 <div class="form-group">
   <label class="col-md-4 control-label"></label>
   <div class="col-md-4">

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import pytz
+import markdown
 from datetime import datetime
 import acm_report.settings as settings
 
@@ -40,3 +41,7 @@ def date2semester(date):
         return date.year-1, 'fall'
     else:
         return date.year, 'fall'
+
+
+def markdown_to_html5(text):
+    return markdown.markdown(text, output_format='html5')

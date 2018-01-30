@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block title %}{{ config.title }} 提交情况{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ config.title }}<small>提交情况</small></h1>
+  {% if my_reports or config.start_time < datetime.utcnow() < config.end_time %}
+  <span class="glyphicon glyphicon-file" aria-hidden="true"></span> 我的提交记录
+  <ul>
+    {% if config.start_time < datetime.utcnow() < config.end_time %}
+    <li><a href="{{ url_for('get_report_create', form_id=form.id) }}"><span class="glyphicon glyphicon-edit" aria-hidden="true"></span> 填写小结</a></li>
+    {% endif %}
+    {% for report in my_reports %}
+    <li><a href="{{url_for('get_report', id=report.id)}}">{{ report.created_at | format_from_utc }}</a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% for y in config.students %}
+<h2>{{y}}级</h2>
+<table class="table table-condensed table-striped">
+    <thead>
+        <tr>
+            <th class="col-md-2">学号</th>
+            <th class="col-md-7">姓名</th>
+            <th class="col-md-3">最后提交时间</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for u in users[y] %}
+        <tr>
+            <td>{{ u.stuid }}</td>
+            <td>{{ u.name }}</td>
+            <td>{% if u.id in reports %}{{ reports[u.id] | format_from_utc }}{% endif %}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endfor %}
+
+{% endblock %}

@@ -1,57 +1,34 @@
 {% extends "layout.html" %}
-{% block title %}ACM{{ session['user_year'] }}-{{ session['user_name'] }} {{semester_name(year, season)}}小结{% endblock %}
+{% block title %}ACM{{ session['user_year'] }}-{{ session['user_name'] }} {{ config.title }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>{{semester_name(year, season)}}小结<small>ACM{{ session['user_year'] }}-{{ session['user_name'] }}</small></h1>
+  <h1>{{ config.title }}<small>ACM{{ session['user_year'] }}-{{ session['user_name'] }}</small></h1>
 </div>
 
-<h2>1. 正文部分</h2>
-{% set x = texts['article'][0] %}
-<h3>{{ x['title'] }}</h3>
-{{ x['body'] | nl2p | safe }}
+{% macro render_fields(fields, value) %}
+  {% for field in fields %}
+    <dt>{{ field.label }}</dt>
+    <dd>{% if field.id in value %}{{ value[field.id] | nl2p | safe }}{% endif %}</dd>
+  {% endfor %}
+{% endmacro %}
 
-<hr><h2>2. 课程评价</h2>
-{% for x in texts['course'] %}
-<h4>{{ x['course'] }} - {{ x['teacher'] }}</h4>
-{{ x['body'] | nl2p | safe }}
+{% for section in config.sections %}
+  <h2>{{ loop.index }}. {{ section.title }}</h2>
+  <dl class="dl-horizontal">
+  {% if section.id in report %}
+    {% if 'repeat' in section %}
+      {% for value in report[section.id] %}
+        {{ render_fields(section.fields, value) }}
+        {% if not loop.last %}
+          <dt></dt>
+          <dd><hr></dd>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      {{ render_fields(section.fields, report[section.id]) }}
+    {% endif %}
+  {% endif %}
+  </dl>
 {% endfor %}
-
-<hr><h2>3. 助教评价</h2>
-{% for x in texts['ta'] %}
-<h4>{{ x['course'] }} - {{ x['ta'] }}</h4>
-{{ x['body'] | nl2p | safe }}
-{% endfor %}
-
-{% set x = texts['teach'][0] %}
-<hr><h2>4. 助教工作小结</h2>
-{{ x['body'] | nl2p | safe }}
-
-<!--
-{% set x = texts['lab'][0] %}
-<hr><h2>5. 实验室实习小结</h2>
-{{ x['body'] | nl2p | safe }}
--->
-
-<hr><h2>5. 同学评价</h2>
-{% for x in texts['peer'] %}
-<h4>{{ x['name'] }}</h4>
-{{ x['body'] | nl2p | safe }}
-{% endfor %}
-
-<hr><h2>6. 同学好评</h2>
-{% for x in texts['positive'] %}
-<h4>{{ x['name'] }}</h4>
-{{ x['body'] | nl2p | safe }}
-{% endfor %}
-
-<hr><h2>7. 同学差评</h2>
-{% for x in texts['negative'] %}
-<h4>{{ x['name'] }}</h4>
-{{ x['body'] | nl2p | safe }}
-{% endfor %}
-
-{% set x = texts['advice'][0] %}
-<hr><h2>8. 班级建议</h2>
-{{ x['body'] | nl2p | safe }}
 
 {% endblock %}

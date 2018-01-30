@@ -19,8 +19,8 @@ def send_vericode(to_addr, to_name, vericode):
     print 'vericode', to_addr, vericode
 
     try:
-        s = smtplib.SMTP('localhost')
-        s.sendmail(sender, [to_addr], msg.as_string())
+        # s = smtplib.SMTP('localhost')
+        # s.sendmail(sender, [to_addr], msg.as_string())
         return None
     except:
         return traceback.format_exc()

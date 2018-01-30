@@ -6,13 +6,19 @@
 </div>
 <p>如需要帮助，请联系管理员：<code>lqiu@apex.sjtu.edu.cn</code></p>
 
+{% if active %}
+<h3>现在可以填写的小结</h3>
+<ul>
+{% for form in forms if form.id in active %}
+    <li><a href="{{ url_for('get_form', form_id=form.id) }}">{{ form.title }}</a></li>
+{% endfor %}
+</ul>
+{% endif %}
+
 <h3>查看历年小结提交情况</h3>
 <ul>
-{% for y in range(datetime.utcnow().year-1, 2015, -1) %}
-    <li>{{y}}-{{y+1}}学年
-        <a href="{{url_for('get_semester', year=y, season='fall')}}">秋季学期</a>
-        <a href="{{url_for('get_semester', year=y+1, season='spring')}}">春夏学期</a>
-    </li>
+{% for form in forms if form.id not in active %}
+    <li><a href="{{ url_for('get_form', form_id=form.id) }}">{{ form.title }}</a></li>
 {% endfor %}
 </ul>
 {% endblock %}
