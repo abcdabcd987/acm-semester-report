@@ -9,6 +9,7 @@
 
 <form class="form-horizontal" method="post">
 <fieldset>
+{{ csrf_form.hidden_tag() }}
 
 {%- macro input(name, title, value) -%}
 <div class="form-group">

@@ -30,22 +30,22 @@ https://github.com/abcdabcd987/acm-semester-report
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="{{url_for('get_homepage')}}">ACM班学期小结</a>
+          <a class="navbar-brand" href="{{url_for('.get_homepage')}}">ACM班学期小结</a>
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li><a href="{{url_for('get_homepage')}}"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> 首页</a></li>
+            <li><a href="{{url_for('.get_homepage')}}"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> 首页</a></li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
           {% if session.get('verified', None) %}
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-user" aria-hidden="true"></span> 你好，<strong>ACM{{session['user_year']}}-{{session['user_name']}}</strong> <span class="caret"></span></a>
               <ul class="dropdown-menu">
-                <li><a href="{{url_for('get_logout')}}"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span> 登出</a></li>
+                <li><a href="{{url_for('.get_logout')}}"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span> 登出</a></li>
               </ul>
             </li>
           {% else %}
-            <li><a href="{{url_for('get_login')}}"><span class="glyphicon glyphicon-log-in" aria-hidden="true"></span> 登入</a></li>
+            <li><a href="{{url_for('.get_login')}}"><span class="glyphicon glyphicon-log-in" aria-hidden="true"></span> 登入</a></li>
           {% endif %}
           </ul>
         </div><!--/.nav-collapse -->

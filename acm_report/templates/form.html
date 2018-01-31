@@ -7,10 +7,10 @@
   <span class="glyphicon glyphicon-file" aria-hidden="true"></span> 我的提交记录
   <ul>
     {% if config.start_time < datetime.utcnow() < config.end_time %}
-    <li><a href="{{ url_for('get_report_create', form_id=form.id) }}"><span class="glyphicon glyphicon-edit" aria-hidden="true"></span> 填写小结</a></li>
+    <li><a href="{{ url_for('.get_report_create', form_id=form.id) }}"><span class="glyphicon glyphicon-edit" aria-hidden="true"></span> 填写小结</a></li>
     {% endif %}
     {% for report in my_reports %}
-    <li><a href="{{url_for('get_report', id=report.id)}}">{{ report.created_at | format_from_utc }}</a></li>
+    <li><a href="{{url_for('.get_report', id=report.id)}}">{{ report.created_at | format_from_utc }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}

@@ -1,0 +1,3 @@
+graft acm_report/templates
+graft acm_report/static
+include requirements.txt

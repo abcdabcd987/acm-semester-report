@@ -1,29 +1,30 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, TIMESTAMP
-from acm_report.database import Base, db_session
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
 
 
-class User(Base):
+class User(db.Model):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    email = Column(String, unique=True)
-    year = Column(Integer, nullable=False)
-    stuid = Column(String, unique=True)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, unique=True)
+    year = db.Column(db.Integer, nullable=False)
+    stuid = db.Column(db.String, unique=True)
 
 
-class Form(Base):
+class Form(db.Model):
     __tablename__ = 'forms'
-    id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)
-    start_time = Column(TIMESTAMP, nullable=False)
-    end_time = Column(TIMESTAMP, nullable=False)
-    config_yaml = Column(Text, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String, nullable=False)
+    start_time = db.Column(db.TIMESTAMP, nullable=False)
+    end_time = db.Column(db.TIMESTAMP, nullable=False)
+    config_yaml = db.Column(db.Text, nullable=False)
 
 
-class Report(Base):
+class Report(db.Model):
     __tablename__ = 'reports'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    form_id = Column(Integer, ForeignKey('forms.id'), nullable=False)
-    json = Column(Text, nullable=False)
-    created_at = Column(TIMESTAMP, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    form_id = db.Column(db.Integer, db.ForeignKey('forms.id'), nullable=False)
+    json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.TIMESTAMP, nullable=False)

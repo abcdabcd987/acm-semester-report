@@ -1,3 +1,8 @@
-Flask==0.11.1
-pytz==2015.7
-SQLAlchemy==1.1.0b3
+pytz==2017.3
+WTForms==2.1
+Flask_WTF==0.14.2
+SQLAlchemy==1.2.0
+setuptools==36.5.0
+Flask==0.12.2
+Flask_SQLAlchemy==2.3.2
+markdown==2.6.11

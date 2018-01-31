@@ -10,7 +10,7 @@
 <h3>现在可以填写的小结</h3>
 <ul>
 {% for form in forms if form.id in active %}
-    <li><a href="{{ url_for('get_form', form_id=form.id) }}">{{ form.title }}</a></li>
+    <li><a href="{{ url_for('.get_form', form_id=form.id) }}">{{ form.title }}</a></li>
 {% endfor %}
 </ul>
 {% endif %}
@@ -18,7 +18,7 @@
 <h3>查看历年小结提交情况</h3>
 <ul>
 {% for form in forms if form.id not in active %}
-    <li><a href="{{ url_for('get_form', form_id=form.id) }}">{{ form.title }}</a></li>
+    <li><a href="{{ url_for('.get_form', form_id=form.id) }}">{{ form.title }}</a></li>
 {% endfor %}
 </ul>
 {% endblock %}

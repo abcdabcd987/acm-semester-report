@@ -1,11 +1,11 @@
 import pytz
 import markdown
 from datetime import datetime
-import acm_report.settings as settings
+from .settings import Settings
 
 
 def format_from_utc(dt):
-    dt = settings.TIMEZONE.fromutc(dt.replace(tzinfo=settings.TIMEZONE))
+    dt = Settings.TIMEZONE.fromutc(dt.replace(tzinfo=Settings.TIMEZONE))
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
@@ -14,7 +14,7 @@ def parse_datetime(value):
 
 
 def local_to_utc(local):
-    return settings.TIMEZONE.localize(local, is_dst=False).astimezone(pytz.utc)
+    return Settings.TIMEZONE.localize(local, is_dst=False).astimezone(pytz.utc)
 
 
 def nl2p(text):
@@ -23,22 +23,6 @@ def nl2p(text):
 
 def normalize_nl(text):
     return '\n\n'.join(line for line in text.splitlines() if line)
-
-
-def semester_name(year, season):
-    if season == 'fall':
-        return '%d-%d学年秋季学期' % (year, year+1)
-    else:
-        return '%d-%d学年春夏学期' % (year-1, year)
-
-
-def date2semester(date):
-    if 3 <= date.month < 10:
-        return date.year, 'spring'
-    if date.month < 3:
-        return date.year-1, 'fall'
-    else:
-        return date.year, 'fall'
 
 
 def markdown_to_html5(text):

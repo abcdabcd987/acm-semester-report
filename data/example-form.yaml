@@ -1,0 +1,215 @@
+title: 2016-2017学年秋季学期小结
+start_time: 2017-01-01 00:00:00
+end_time: 2017-03-01 00:00:00
+students:
+  - 2016
+  - 2015
+  - 2014
+  - 2013
+sections:
+  - title: 正文部分
+    id: article
+    description: |-
+      用一简短的词或句作小结标题。如果需要使用富文本格式，请单独发送给俞老师。
+    fields:
+      - id: title
+        type: string
+        label: 标题
+      - id: content
+        type: text
+        rows: 20
+        label: 正文
+    reports:
+      - file_by: per_student
+        directory: "{section[index]}{section[title]}"
+        tostring: |-
+          # ACM{{ student.year }}-{{ student.name }} {{ section.title }}
+
+          ## {{ fields[0].title }}
+
+          {{ fields[0].content }}
+
+
+  - title: 课程评价
+    id: course
+    description: |-
+      所有课程，包括课程设计。
+    fields:
+      - id: course
+        type: string
+        label: 课程名称
+      - id: name
+        type: string
+        label: 授课教师
+      - id: content
+        type: text
+        rows: 4
+        label: 评价正文
+    repeat:
+      min: 1
+    reports: &course_reports
+      - file_by: per_class
+        directory: "{section[index]}{section[title]}（按学生归类）"
+        tostring: |-
+          # {{ section.title }}（按学生归类）
+
+          {% for student in students %}
+          ## ACM{{ student.year }}-{{ student.name }}
+
+          {% for review in student.fields %}
+          ### {{ review.course }} - {{ review.name }}
+
+          {{ review.content }}
+
+          {% endfor %}
+          {% endfor %}
+      - file_by: per_class
+        directory: "{section[index]}{section[title]}（按课程归类）"
+        reductions:
+          courses:
+            key: "{fields[course]} - {fields[name]}"
+            value: |-
+              ### 来自 ACM{student[year]}-{student[name]} 的{section[title]}
+
+              {fields[content]}
+        tostring: |-
+          # {{ section.title }}（按课程归类）
+
+          {% for name, reviews in reductions.courses.items() %}
+          ## {{ name }}
+
+          {% for review in reviews %}
+          {{ review }}
+
+          {% endfor %}
+          {% endfor %}
+
+
+  - title: 助教评价
+    id: ta
+    fields:
+      - id: course
+        type: string
+        label: 课程名称
+      - id: name
+        type: string
+        label: 助教姓名
+      - id: content
+        type: text
+        rows: 4
+        label: 评价正文
+    repeat:
+      min: 1
+    reports: *course_reports
+
+
+  - title: 助教工作小结
+    id: teach
+    description: |-
+      如自己是助教，需要作自我评价、例举影响深刻的学生与事，以及建议。否则请留空。
+    fields:
+      - id: content
+        type: text
+        rows: 20
+        label: 正文
+    reports:
+      - file_by: per_student
+        directory: "{section[index]}{section[title]}"
+        tostring: |-
+          # ACM{{ student.year }}-{{ student.name }} {{ section.title }}
+
+          {{ fields[0].content }}
+
+
+  - title: 同学评价
+    id: peer_review
+    description: |-
+      请确保姓名填写正确。你可以在[这里]({webroot}/form/{form_id})看到名表。至少5位。
+    fields:
+      - id: name
+        type: string
+        label: 同学姓名
+      - id: content
+        type: text
+        rows: 4
+        label: 评价正文
+    repeat:
+      min: 5
+    reports: &peer_review_reports
+      - file_by: per_class
+        directory: "{section[index]}{section[title]}（按被评价者归类）"
+        reductions:
+          reviews_by_student:
+            key: "{fields[name]}"
+            value: |-
+              ### 来自 ACM{student[year]}-{student[name]} 的{section[title]}
+
+              {fields[content]}
+        tostring: |-
+          # {{ section.title }}
+
+          {% for name, reviews in reductions.reviews_by_student.items() %}
+          ## {{ name }}
+
+          {% for review in reviews %}
+          {{ review }}
+          
+          {% endfor %}
+          {% endfor %}
+
+
+  - title: 同学好评
+    id: positive_review
+    description: |-
+      请确保姓名填写正确。你可以在[这里]({webroot}/form/{form_id})看到名表。至少3位，且从高到低排序。要求每个人评出班级中3位最努力、进步最快的学生，且必须说明理由及事例。如果包括自己的话必须增加1个人。
+    fields:
+      - id: name
+        type: string
+        label: 同学姓名
+      - id: content
+        type: text
+        rows: 4
+        label: 评价正文
+    repeat:
+      min: 3
+    reports: *peer_review_reports
+
+
+  - title: 同学差评
+    id: negative_review
+    description: |-
+      请确保姓名填写正确。你可以在[这里]({webroot}/form/{form_id})看到名表。至少3位，且从高到低排序。要求每个人评出班级中3位最不努力、最浪费时间的学生，且必须说明理由及事例。如果包括自己的话必须增加1个人。
+    fields:
+      - id: name
+        type: string
+        label: 同学姓名
+      - id: content
+        type: text
+        rows: 4
+        label: 评价正文
+    repeat:
+      min: 3
+    reports: *peer_review_reports
+
+
+  - title: 班级的建议
+    id: suggestion
+    description: |-
+      尽量具有可操作性
+    fields:
+      - id: content
+        type: text
+        rows: 5
+        label: 正文
+    reports:
+      - file_by: per_class
+        directory: "{section[index]}{section[title]}"
+        tostring: |-
+          # {{ section.title }}
+
+          {% for student in students %}
+          ## {{ student.name }}
+
+          {{ student.fields[0].content }}
+
+          {% endfor %}

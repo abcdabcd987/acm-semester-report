@@ -10,58 +10,33 @@ import hashlib
 import traceback
 from pprint import pprint
 from datetime import datetime
-import acm_report.utils as utils
-from acm_report.models import *
-from acm_report.database import db_session, init_db
+from . import utils
+from .models import *
 
 
-def read(prompt):
-    return input(prompt).strip()
-
-
-def initdb():
-    key = int(time.time()) // 60
-    key = hashlib.md5(str(key)).hexdigest()[:6]
-    if len(sys.argv) != 3 or sys.argv[2] != key:
-        print('please run the following command within the current minute')
-        print('    python maintenance.py initdb %s' % key)
-        sys.exit(1)
-    print('initializing the database')
-    init_db()
-    print('done!')
-
-
-def change_email():
-    if len(sys.argv) != 4:
-        print('usage: python maintenance.py change_email <stuid> <email>')
-        sys.exit(1)
-    stuid = sys.argv[2]
-    email = sys.argv[3]
-    user = db_session.query(User).filter(User.stuid == stuid).one()
+def change_email(stuid, email):
+    user = db.session.query(User).filter(User.stuid == stuid).one()
     user.email = email
-    db_session.commit()
+    db.session.commit()
     print('done! %s %s %s %s' % (user.name, user.email, user.year, user.stuid))
 
 
-def add_users():
-    if len(sys.argv) != 3:
-        print('usage: python maintenance.py add_users <path to new user list>')
-        sys.exit(1)
+def add_users(filename):
     cnt = 0
-    with open(sys.argv[2], 'rb') as f:
+    with open(filename, 'rb') as f:
         for line in f:
             line = line.strip()
             if line.startswith('#') or not line:
                 continue
             name, email, year, stuid = line.split()
             user = User(name=name, email=email, year=year, stuid=stuid)
-            db_session.add(user)
+            db.session.add(user)
             cnt += 1
-    db_session.commit()
+    db.session.commit()
     print('done! %d new users added' % cnt)
 
 
-def generate():
+def generate(form_id):
     def is_empty_fields(fields):
         if type(fields) is list:
             return all(is_empty_fields(f) for f in fields)
@@ -78,13 +53,7 @@ def generate():
                     f[field['id']] = utils.normalize_nl(f[field['id']])
         return section_json
 
-    try:
-        form_id = int(sys.argv[2])
-    except:
-        print('usage: python maintenance.py generate <form_id>')
-        sys.exit(1)
-
-    form = db_session.query(Form).filter(Form.id == form_id).one()
+    form = db.session.query(Form).filter(Form.id == form_id).one()
     config = yaml.load(form.config_yaml)
 
     basename = '[{}]{}'.format(form.id, form.title)
@@ -92,10 +61,10 @@ def generate():
     os.mkdir(basedir)
 
     latest_reports = {}
-    for r in db_session.query(Report).filter(Report.form_id == form_id):
+    for r in db.session.query(Report).filter(Report.form_id == form_id):
         if r.user_id not in latest_reports or latest_reports[r.user_id].created_at < r.created_at:
             latest_reports[r.user_id] = r
-    users = {r.id: r for r in db_session.query(User).filter(User.id.in_(latest_reports.keys()))}
+    users = {r.id: r for r in db.session.query(User).filter(User.id.in_(latest_reports.keys()))}
 
     for section_index, section in enumerate(config['sections'], start=1):
         print(section['title'])
@@ -289,41 +258,17 @@ def set_form(filename, form, debug):
     form.start_time = config['start_time']
     form.end_time = config['end_time']
     form.config_yaml = config_str
-    db_session.add(form)
-    db_session.commit()
+    db.session.add(form)
+    db.session.commit()
     print('success! the form id is:', form.id)
 
 
-def add_form():
-    if len(sys.argv) not in [3, 4]:
-        print('usage: python maintenance.py add_form <path to yaml> [--debug]')
-        sys.exit(1)
+def add_form(filename, debug):
     form = Form()
-    set_form(sys.argv[2], form, len(sys.argv) == 4)
+    set_form(filename, form, debug)
 
 
-def update_form():
-    if len(sys.argv) not in [4, 5]:
-        print('usage: python maintenance.py update_form <form_id> <path to yaml> [--debug]')
-        sys.exit(1)
-    form_id = int(sys.argv[2])
-    form = db_session.query(Form).filter(Form.id == form_id).one()
-    set_form(sys.argv[3], form, len(sys.argv) == 5)
-
-
-if __name__ == '__main__':
-    actions = {
-        'initdb': initdb,
-        'add_users': add_users,
-        'change_email': change_email,
-        'generate': generate,
-        'add_form': add_form,
-        'update_form': update_form,
-    }
-    if len(sys.argv) < 2 or sys.argv[1] not in actions:
-        print('usage: python maintenance.py ACTION')
-        print('ACTION can be:')
-        for k in actions:
-            print('    %s' % k)
-        sys.exit(1)
-    actions[sys.argv[1]]()
+def update_form(form_id, filename, debug):
+    form_id = int(form_id)
+    form = db.session.query(Form).filter(Form.id == form_id).one()
+    set_form(filename, form, debug)
