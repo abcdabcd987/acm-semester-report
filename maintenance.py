@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, division, unicode_literals
+
 import os
 import io
 import re
@@ -20,7 +20,7 @@ from acm_report.database import db_session, init_db
 
 
 def read(prompt):
-    return raw_input(prompt).strip().decode('utf-8')
+    return input(prompt).strip().decode('utf-8')
 
 
 def initdb():
@@ -69,7 +69,7 @@ def generate():
     def is_empty_fields(fields):
         if type(fields) is list:
             return all(is_empty_fields(f) for f in fields)
-        for k, v in fields.items():
+        for k, v in list(fields.items()):
             if v.strip():
                 return False
         return True
@@ -99,19 +99,19 @@ def generate():
     for r in db_session.query(Report).filter(Report.form_id == form_id):
         if r.user_id not in latest_reports or latest_reports[r.user_id].created_at < r.created_at:
             latest_reports[r.user_id] = r
-    users = {r.id: r for r in db_session.query(User).filter(User.id.in_(latest_reports.keys()))}
+    users = {r.id: r for r in db_session.query(User).filter(User.id.in_(list(latest_reports.keys())))}
 
     for section_index, section in enumerate(config['sections'], start=1):
         print(section['title'])
         ctx_section = {'index': section_index, 'title': section['title']}
         for report_config in section['reports']:
-            dirname = unicode(report_config['directory']).format(section=ctx_section)
+            dirname = str(report_config['directory']).format(section=ctx_section)
             dirname = os.path.join(basedir, dirname)
             os.mkdir(dirname)
             template = jinja2.Template(report_config['tostring'])
 
             if report_config['file_by'] == 'per_student':
-                for u in users.values():
+                for u in list(users.values()):
                     section_json = load_section_json(latest_reports, u, section)
                     if is_empty_fields(section_json):
                         continue
@@ -125,7 +125,7 @@ def generate():
             elif report_config['file_by'] == 'per_class':
                 for year in config['students']:
                     students = []
-                    for u in users.values():
+                    for u in list(users.values()):
                         if u.year != year:
                             continue
                         d = copy.deepcopy(u.__dict__)
@@ -136,11 +136,11 @@ def generate():
                         students.append(d)
 
                     reductions = {}
-                    for var_name, kv in report_config.get('reductions', {}).items():
-                        key_template = unicode(kv['key'])
-                        value_template = unicode(kv['value'])
+                    for var_name, kv in list(report_config.get('reductions', {}).items()):
+                        key_template = str(kv['key'])
+                        value_template = str(kv['value'])
                         d = {}
-                        for u in users.values():
+                        for u in list(users.values()):
                             if u.year != year:
                                 continue
                             section_json = load_section_json(latest_reports, u, section)
@@ -175,7 +175,7 @@ def generate():
 
 def flatten_deepcopy(config):
     if type(config) is dict:
-        return {k: flatten_deepcopy(v) for k, v in config.iteritems()}
+        return {k: flatten_deepcopy(v) for k, v in config.items()}
     elif type(config) is list:
         return [flatten_deepcopy(v) for v in config]
     elif type(config) is set:
@@ -189,7 +189,7 @@ def validate_form(config, debug_print):
     config = flatten_deepcopy(config)
 
     title = config.pop('title')
-    assert type(title) in [str, unicode]
+    assert type(title) in [str, str]
     start_time = config.pop('start_time')
     assert type(start_time) is datetime
     end_time = config.pop('end_time')
@@ -206,14 +206,14 @@ def validate_form(config, debug_print):
     section_ids = []
     for section in sections:
         title = section.pop('title')
-        assert type(title) in [str, unicode]
+        assert type(title) in [str, str]
         id = section.pop('id')
         debug_print(0, 'enter section', id)
-        assert type(id) in [str, unicode]
+        assert type(id) in [str, str]
         assert id not in section_ids
         section_ids.append(id)
         description = section.pop('description', '')
-        assert type(description) in [str, unicode]
+        assert type(description) in [str, str]
         fields = section.pop('fields')
         assert type(fields) is list
         reports = section.pop('reports')
@@ -230,7 +230,7 @@ def validate_form(config, debug_print):
             assert type(field) is dict
             id = field.pop('id')
             debug_print(4, 'enter field', id)
-            assert type(id) in [str, unicode]
+            assert type(id) in [str, str]
             assert id not in field_ids
             field_ids.append(id)
             type_ = field.pop('type')
@@ -239,7 +239,7 @@ def validate_form(config, debug_print):
                 rows = field.pop('rows')
                 assert type(rows) is int
             label = field.pop('label')
-            assert type(label) in [str, unicode]
+            assert type(label) in [str, str]
             assert not field
             debug_print(4, 'exit field')
         assert len(field_ids) == len(fields)
@@ -255,22 +255,22 @@ def validate_form(config, debug_print):
             file_by = report.pop('file_by')
             assert file_by in ['per_student', 'per_class']
             directory = report.pop('directory')
-            assert type(directory) in [str, unicode]
+            assert type(directory) in [str, str]
             assert not is_jinja.match(directory)
             tostring = report.pop('tostring')
-            assert type(tostring) in [str, unicode]
+            assert type(tostring) in [str, str]
             if 'reductions' in report:
                 reductions = report.pop('reductions')
                 assert type(reductions) is dict
-                for name, reduction in reductions.items():
+                for name, reduction in list(reductions.items()):
                     debug_print(8, 'enter reduction', name)
-                    assert type(name) in [str, unicode]
+                    assert type(name) in [str, str]
                     assert type(reduction) is dict
                     key = reduction.pop('key')
                     assert not is_jinja.match(key)
-                    assert type(key) in [str, unicode]
+                    assert type(key) in [str, str]
                     value = reduction.pop('value')
-                    assert type(value) in [str, unicode]
+                    assert type(value) in [str, str]
                     assert not is_jinja.match(value)
                     assert not reduction
                     debug_print(8, 'exit reduction')

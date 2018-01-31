@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+
 import os
 import uuid
 import yaml
@@ -143,7 +143,7 @@ def post_report_create(form_id):
         l = []
         for field in section['fields']:
             values = request.form.getlist(section['id'] + '.' + field['id'] + '[]')
-            for _ in xrange(len(values) - len(l)):
+            for _ in range(len(values) - len(l)):
                 l.append({f['id']: '' for f in section['fields']})
             for i, value in enumerate(values):
                 l[i][field['id']] = value.strip()
