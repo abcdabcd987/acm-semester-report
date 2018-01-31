@@ -73,3 +73,5 @@ def convert(old_filename, new_filename, form_id, start_date):
 
 if __name__ == '__main__':
     convert('data/old.db', 'data/report.db', 1, '2017-01-01')
+    convert('data/old.db', 'data/report.db', 2, '2017-07-01')
+    convert('data/old.db', 'data/report.db', 3, '2018-01-01')

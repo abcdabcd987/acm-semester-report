@@ -7,7 +7,7 @@
 <p>如需要帮助，请联系管理员：<code>lqiu@apex.sjtu.edu.cn</code></p>
 
 {% if active %}
-<h3>现在可以填写的小结</h3>
+<h3>尚未截止的小结</h3>
 <ul>
 {% for form in forms if form.id in active %}
     <li><a href="{{ url_for('.get_form', form_id=form.id) }}">{{ form.title }}</a></li>

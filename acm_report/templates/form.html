@@ -3,10 +3,11 @@
 {% block content %}
 <div class="page-header">
   <h1>{{ config.title }}<small>提交情况</small></h1>
-  {% if my_reports or config.start_time < datetime.utcnow() < config.end_time %}
+  {% set can_write = config.start_time < datetime.utcnow() < config.end_time and session.user_year in config.students %}
+  {% if my_reports or can_write %}
   <span class="glyphicon glyphicon-file" aria-hidden="true"></span> 我的提交记录
   <ul>
-    {% if config.start_time < datetime.utcnow() < config.end_time %}
+    {% if can_write %}
     <li><a href="{{ url_for('.get_report_create', form_id=form.id) }}"><span class="glyphicon glyphicon-edit" aria-hidden="true"></span> 填写小结</a></li>
     {% endif %}
     {% for report in my_reports %}
