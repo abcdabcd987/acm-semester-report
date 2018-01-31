@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 import os
-import io
 import re
 import sys
 import copy
@@ -9,7 +6,6 @@ import time
 import yaml
 import json
 import jinja2
-import codecs
 import hashlib
 import traceback
 from pprint import pprint
@@ -20,7 +16,7 @@ from acm_report.database import db_session, init_db
 
 
 def read(prompt):
-    return input(prompt).strip().decode('utf-8')
+    return input(prompt).strip()
 
 
 def initdb():
@@ -54,7 +50,7 @@ def add_users():
     cnt = 0
     with open(sys.argv[2], 'rb') as f:
         for line in f:
-            line = line.decode('utf-8').strip()
+            line = line.strip()
             if line.startswith('#') or not line:
                 continue
             name, email, year, stuid = line.split()
@@ -69,7 +65,7 @@ def generate():
     def is_empty_fields(fields):
         if type(fields) is list:
             return all(is_empty_fields(f) for f in fields)
-        for k, v in list(fields.items()):
+        for k, v in fields.items():
             if v.strip():
                 return False
         return True
@@ -99,24 +95,24 @@ def generate():
     for r in db_session.query(Report).filter(Report.form_id == form_id):
         if r.user_id not in latest_reports or latest_reports[r.user_id].created_at < r.created_at:
             latest_reports[r.user_id] = r
-    users = {r.id: r for r in db_session.query(User).filter(User.id.in_(list(latest_reports.keys())))}
+    users = {r.id: r for r in db_session.query(User).filter(User.id.in_(latest_reports.keys()))}
 
     for section_index, section in enumerate(config['sections'], start=1):
         print(section['title'])
         ctx_section = {'index': section_index, 'title': section['title']}
         for report_config in section['reports']:
-            dirname = str(report_config['directory']).format(section=ctx_section)
+            dirname = report_config['directory'].format(section=ctx_section)
             dirname = os.path.join(basedir, dirname)
             os.mkdir(dirname)
             template = jinja2.Template(report_config['tostring'])
 
             if report_config['file_by'] == 'per_student':
-                for u in list(users.values()):
+                for u in users.values():
                     section_json = load_section_json(latest_reports, u, section)
                     if is_empty_fields(section_json):
                         continue
                     filename = 'ACM{}-{}.txt'.format(u.year, u.name)
-                    with io.open(os.path.join(dirname, filename), 'w', encoding='utf-8') as f:
+                    with open(os.path.join(dirname, filename), 'w', encoding='utf-8') as f:
                         f.write(template.render(student=u.__dict__,
                                                 section=ctx_section,
                                                 fields=section_json))
@@ -125,7 +121,7 @@ def generate():
             elif report_config['file_by'] == 'per_class':
                 for year in config['students']:
                     students = []
-                    for u in list(users.values()):
+                    for u in users.values():
                         if u.year != year:
                             continue
                         d = copy.deepcopy(u.__dict__)
@@ -136,11 +132,11 @@ def generate():
                         students.append(d)
 
                     reductions = {}
-                    for var_name, kv in list(report_config.get('reductions', {}).items()):
-                        key_template = str(kv['key'])
-                        value_template = str(kv['value'])
+                    for var_name, kv in report_config.get('reductions', {}).items():
+                        key_template = kv['key']
+                        value_template = kv['value']
                         d = {}
-                        for u in list(users.values()):
+                        for u in users.values():
                             if u.year != year:
                                 continue
                             section_json = load_section_json(latest_reports, u, section)
@@ -155,7 +151,7 @@ def generate():
                         reductions[var_name] = d
 
                     filename = 'ACM{}.txt'.format(year)
-                    with io.open(os.path.join(dirname, filename), 'w', encoding='utf-8') as f:
+                    with open(os.path.join(dirname, filename), 'w', encoding='utf-8') as f:
                         f.write(template.render(students=students,
                                                 section=ctx_section,
                                                 reductions=reductions))
@@ -163,11 +159,11 @@ def generate():
                 assert False, 'unknown file_by field: ' + report_config['file_by']
 
     print('converting to CRLF...')
-    os.system(('find %s -type f -exec unix2dos {} \;' % basedir).encode('utf-8'))
+    os.system('find %s -type f -exec unix2dos {} \;' % basedir)
     print('archiving...')
-    os.system(('7z a data/%s.7z %s' % (basename, basedir)).encode('utf-8'))
+    os.system('7z a data/%s.7z %s' % (basename, basedir))
     filename = os.path.join(basedir, 'packed_' + basename + '.7z')
-    os.system(('mv data/%s.7z %s' % (basename, filename)).encode('utf-8'))
+    os.system('mv data/%s.7z %s' % (basename, filename))
     print('done!')
     print('saved  at', basedir)
     print('packed at', filename)
@@ -189,7 +185,7 @@ def validate_form(config, debug_print):
     config = flatten_deepcopy(config)
 
     title = config.pop('title')
-    assert type(title) in [str, str]
+    assert type(title) is str
     start_time = config.pop('start_time')
     assert type(start_time) is datetime
     end_time = config.pop('end_time')
@@ -206,14 +202,14 @@ def validate_form(config, debug_print):
     section_ids = []
     for section in sections:
         title = section.pop('title')
-        assert type(title) in [str, str]
+        assert type(title) is str
         id = section.pop('id')
         debug_print(0, 'enter section', id)
-        assert type(id) in [str, str]
+        assert type(id) is str
         assert id not in section_ids
         section_ids.append(id)
         description = section.pop('description', '')
-        assert type(description) in [str, str]
+        assert type(description) is str
         fields = section.pop('fields')
         assert type(fields) is list
         reports = section.pop('reports')
@@ -230,7 +226,7 @@ def validate_form(config, debug_print):
             assert type(field) is dict
             id = field.pop('id')
             debug_print(4, 'enter field', id)
-            assert type(id) in [str, str]
+            assert type(id) is str
             assert id not in field_ids
             field_ids.append(id)
             type_ = field.pop('type')
@@ -239,7 +235,7 @@ def validate_form(config, debug_print):
                 rows = field.pop('rows')
                 assert type(rows) is int
             label = field.pop('label')
-            assert type(label) in [str, str]
+            assert type(label) is str
             assert not field
             debug_print(4, 'exit field')
         assert len(field_ids) == len(fields)
@@ -255,22 +251,22 @@ def validate_form(config, debug_print):
             file_by = report.pop('file_by')
             assert file_by in ['per_student', 'per_class']
             directory = report.pop('directory')
-            assert type(directory) in [str, str]
+            assert type(directory) is str
             assert not is_jinja.match(directory)
             tostring = report.pop('tostring')
-            assert type(tostring) in [str, str]
+            assert type(tostring) is str
             if 'reductions' in report:
                 reductions = report.pop('reductions')
                 assert type(reductions) is dict
-                for name, reduction in list(reductions.items()):
+                for name, reduction in reductions.items():
                     debug_print(8, 'enter reduction', name)
-                    assert type(name) in [str, str]
+                    assert type(name) is str
                     assert type(reduction) is dict
                     key = reduction.pop('key')
                     assert not is_jinja.match(key)
-                    assert type(key) in [str, str]
+                    assert type(key) is str
                     value = reduction.pop('value')
-                    assert type(value) in [str, str]
+                    assert type(value) is str
                     assert not is_jinja.match(value)
                     assert not reduction
                     debug_print(8, 'exit reduction')
@@ -284,7 +280,7 @@ def set_form(filename, form, debug):
         if debug:
             print(' '*indent, *args, **kwargs)
 
-    with io.open(filename, 'r', encoding='utf-8') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         config_str = f.read()
     config = yaml.load(config_str)
     validate_form(config, debug_print)

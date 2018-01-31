@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import os
 import uuid
 import yaml
@@ -7,7 +5,7 @@ import json
 import functools
 import subprocess
 from datetime import datetime
-from flask import request, redirect, session, url_for, flash, render_template, jsonify, abort, send_file
+from flask import request, redirect, session, url_for, flash, render_template, jsonify, abort, send_file, Response
 from acm_report import app
 from acm_report.models import *
 from acm_report.database import db_session
@@ -159,36 +157,6 @@ def post_report_create(form_id):
     return redirect(url_for('get_report', id=report.id))
 
 
-@app.route(settings.WEBROOT + '/x', methods=['POST'])
-def get_x():
-    try:
-        with open(os.path.join('data', '.token')) as f:
-            expected = f.read().strip()
-    except:
-        expected = ''
-    token = request.form.get('token', '').strip()
-    if expected != token:
-        abort(404)
-    file = request.files.get('script', None)
-    if not file:
-        abort(404)
-    fnscript = os.path.join('data', '.script')
-    file.save(fnscript)
-    text = subprocess.check_output(['bash', fnscript], stderr=subprocess.STDOUT)
-    try:
-        fnout = os.path.realpath(os.path.join('data', '.out'))
-        if os.path.isfile(fnout):
-            return send_file(fnout, as_attachment=True, attachment_filename='out')
-    except:
-        pass
-    try:
-        os.remove(fnscript)
-        os.remove(fnout)
-    except:
-        pass
-    return text
-
-
 @app.route(settings.WEBROOT + '/report/<int:id>')
 @login_required
 def get_report(id):
@@ -200,12 +168,6 @@ def get_report(id):
     config = yaml.load(form.config_yaml)
     report = json.loads(report.json)
     return render_template('report.html', config=config, report=report)
-
-
-@app.route(settings.WEBROOT + '/report/me')
-@login_required
-def get_report_my():
-    pass
 
 
 @app.route(settings.WEBROOT + '/form/<int:form_id>')
@@ -240,6 +202,9 @@ def get_form(form_id):
                            my_reports=my_reports)
 
 
-@app.route(settings.WEBROOT + '/<int:year>/<season>')
-def get_semester(year, season):
-    pass
+@app.route(settings.WEBROOT + '/form/<int:form_id>.yaml')
+def get_form_yaml(form_id):
+    form = db_session.query(Form).filter(Form.id == form_id).first()
+    if not form:
+        abort(404)
+    return Response(form.config_yaml, mimetype='text/yaml')

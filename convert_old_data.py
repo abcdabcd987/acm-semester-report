@@ -16,7 +16,7 @@ def load_report_texts(conn_old, report_id):
     json_texts = {}
     for text in cur.fetchall():
         t = json.loads(text['json'])
-        for k, v in list(t.items()):
+        for k, v in t.items():
             if v.strip() in ['N/A', 'NA', '无', '没有']:
                 t[k] = ''
         key = t['type']
