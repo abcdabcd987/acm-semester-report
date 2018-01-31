@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% block title %}填写 {{ config.title }}{% endblock %}
+{% block title -%}填写 {{ config.title }}{%- endblock %}
 {% block content %}
 <div class="page-header">
   <h1>填写 {{ config.title }}</h1>
@@ -10,25 +10,25 @@
 <form class="form-horizontal" method="post">
 <fieldset>
 
-{% macro input(name, title, value) -%}
+{%- macro input(name, title, value) -%}
 <div class="form-group">
   <label class="col-md-2 control-label">{{ title }}</label>  
   <div class="col-md-8"><input type="text" class="form-control input-md" name="{{ name }}" value='{{value}}'></div>
 </div>
-{%- endmacro %}
-{% macro hr() -%}
+{%- endmacro -%}
+{%- macro hr() -%}
 <div class="form-group">
   <label class="col-md-2 control-label"></label>  
   <div class="col-md-8"><hr></div>
 </div>
-{%- endmacro %}
-{% macro textarea(name, title, value, rows=4) -%}
+{%- endmacro -%}
+{%- macro textarea(name, title, value, rows=4) -%}
 <div class="form-group">
   <label class="col-md-2 control-label">{{ title }}</label>  
   <div class="col-md-8"><textarea name="{{ name }}" class="form-control input-md" rows="{{ rows }}">{{value}}</textarea></div>
 </div>
-{%- endmacro %}
-{% macro text_tool(num_extra=0) -%}
+{%- endmacro -%}
+{%- macro text_tool(num_extra=0) -%}
 <div class="form-group text-tool" data-num_extra='{{num_extra}}'>
   <label class="col-md-2 control-label"></label> 
   <div class="col-md-8">
@@ -36,56 +36,47 @@
     <button class="btn btn-default text-del-one" disabled><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> 删除一行</button>
   </div>
 </div>
-{%- endmacro %}
+{%- endmacro -%}
 
 <div class="form-group">
   <label class="col-md-2 control-label">姓名</label>  
   <div class="col-md-8"><input type="text" class="form-control input-md" value="ACM{{ session['user_year'] }}-{{ session['user_name'] }}" disabled></div>
 </div>
 
-{% for section in config.sections %}
-  {% if 'repeat' in section %}
-    {% set num_repeat = section.repeat.min %}
-    {% if report and section.id in report %}
-      {% set num_repeat = max(num_repeat, len(report[section.id])) %}
-    {% endif %}
-  {% else %}
-    {% set num_repeat = 1 %}
-  {% endif %}
+{%- for section in config.sections -%}
+  {%- if 'repeat' in section -%}
+    {%- set num_repeat = section.repeat.min -%}
+    {%- if report and section.id in report -%}
+      {%- set num_repeat = max(num_repeat, len(report[section.id])) -%}
+    {%- endif -%}
+  {%- else -%}
+    {%- set num_repeat = 1 -%}
+  {%- endif -%}
   <h2>{{ loop.index }}. {{ section.title }}</h2>
   {{ section.get('description', '').format(form_id=form.id, webroot=WEBROOT) | markdown | safe }}
-  {% for i in range(num_repeat) %}
+  {%- for i in range(num_repeat) -%}
     <div class="text-wrapper">
-    {% for field in section.fields %}
-      {% set field_id = section.id + '.' + field.id %}
-      {% if 'repeat' in section %}
-        {% set field_id = field_id + '[]' %}
-      {% endif %}
-      {% set value = '' %}
-      {% if report and section.id in report %}
-        {% if 'repeat' in section %}
-          {% set d = report[section.id][i] if i < len(report[section.id]) else None %}
-        {% else %}
-          {% set d = report[section.id] %}
-        {% endif %}
-        {% if d and field.id in d %}
-          {% set value = d[field.id] %}
-        {% endif %}
-      {% endif %}
-      {% if field.type == 'string' %}
+    {%- for field in section.fields -%}
+      {%- set field_id = section.id + '.' + field.id + '[]' -%}
+      {%- if report and section.id in report and i < len(report[section.id]) and field.id in report[section.id][i] -%}
+        {%- set value = report[section.id][i][field.id] -%}
+      {%- else -%}
+        {%- set value = '' -%}
+      {%- endif -%}
+      {%- if field.type == 'string' -%}
         {{ input(field_id, field.label, value) }}
-      {% elif field.type == 'text' %}
+      {%- elif field.type == 'text' -%}
         {{ textarea(field_id, field.label, value, rows=field.rows)}}
-      {% endif %}
-    {% endfor %}
+      {%- endif -%}
+    {%- endfor -%}
     {{ hr() }}
     </div>
-  {% endfor %}
-  {% if 'repeat' in section %}
+  {%- endfor -%}
+  {%- if 'repeat' in section -%}
     {{ text_tool(num_extra=num_repeat-section.repeat.min) }}
-  {% endif %}
+  {%- endif -%}
   <hr>
-{% endfor %}
+{%- endfor -%}
 
 <div class="form-group">
   <label class="col-md-4 control-label"></label>

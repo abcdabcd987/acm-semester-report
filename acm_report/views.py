@@ -142,20 +142,15 @@ def post_report_create(form_id):
         repeat = 'repeat' in section
         l = []
         for field in section['fields']:
-            if repeat:
-                values = request.form.getlist(section['id'] + '.' + field['id'] + '[]')
-                for _ in xrange(len(values) - len(l)):
-                    l.append({f['id']: '' for f in section['fields']})
-                for i, value in enumerate(values):
-                    l[i][field['id']] = value.strip()
-            else:
-                if not l:
-                    l.append({f['id']: '' for f in section['fields']})
-                l[0][field['id']] = request.form.get(section['id'] + '.' + field['id'], '').strip()
-        content[section['id']] = l if repeat else l[0]
-    print(content)
+            values = request.form.getlist(section['id'] + '.' + field['id'] + '[]')
+            for _ in xrange(len(values) - len(l)):
+                l.append({f['id']: '' for f in section['fields']})
+            for i, value in enumerate(values):
+                l[i][field['id']] = value.strip()
+        content[section['id']] = l
 
     report = Report(user_id=session['user_id'],
+                    form_id=form_id,
                     json=json.dumps(content),
                     created_at=datetime.utcnow())
     db_session.add(report)
@@ -218,20 +213,25 @@ def get_form(form_id):
     form = db_session.query(Form).filter(Form.id == form_id).first()
     if not form:
         abort(404)
-    reports = db_session.query(Report).filter(Report.created_at.between(form.start_time, form.end_time)).all()
+    reports = db_session.query(Report)\
+                        .filter(Report.created_at.between(form.start_time, form.end_time))\
+                        .filter(Report.form_id == form_id)\
+                        .order_by(Report.id.desc())\
+                        .all()
+    my_reports = []
     last_report = {}
+    user_id = session.get('user_id', None)
     for r in reports:
         last = last_report.get(r.user_id, None)
         if not last or last < r.created_at:
             last_report[r.user_id] = r.created_at
+        if user_id and r.user_id == user_id:
+            my_reports.append(r)
+
     config = yaml.load(form.config_yaml)
     users = { y: [] for y in config['students'] }
     for u in db_session.query(User).filter(User.year.in_(config['students'])).order_by(User.stuid.asc()).all():
         users[u.year].append(u)
-    if 'user_year' in session and session['user_year'] in config['students']:
-        my_reports = db_session.query(Report).filter(Report.user_id == session['user_id']).order_by(Report.id.desc()).all()
-    else:
-        my_reports = []
     return render_template('form.html',
                            form=form,
                            config=config,

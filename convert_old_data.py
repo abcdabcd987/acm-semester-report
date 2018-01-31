@@ -16,6 +16,9 @@ def load_report_texts(conn_old, report_id):
     json_texts = {}
     for text in cur.fetchall():
         t = json.loads(text['json'])
+        for k, v in t.items():
+            if v.strip() in ['N/A', 'NA', '无', '没有']:
+                t[k] = ''
         key = t['type']
         if key not in json_texts:
             json_texts[key] = []
@@ -33,21 +36,21 @@ def convert(old_filename, new_filename, form_id, start_date):
     for old_report in tqdm(cur_reports.fetchall()):
         texts = load_report_texts(conn_old, old_report['id'])
         content = {
-            'article': {
+            'article': [{
                 'title': texts['article'][0]['title'],
                 'content': texts['article'][0]['body'],
-            },
+            }],
             'course': [
-                dict(course=x['course'], teacher=x['teacher'], content=x['body'])
+                dict(course=x['course'], name=x['teacher'], content=x['body'])
                 for x in texts['course']
             ],
             'ta': [
-                dict(course=x['course'], ta_name=x['ta'], content=x['body'])
+                dict(course=x['course'], name=x['ta'], content=x['body'])
                 for x in texts['ta']
             ],
-            'teach': {
+            'teach': [{
                 'content': texts['teach'][0]['body']
-            },
+            }],
             'peer_review': [
                 dict(name=x['name'], content=x['body'])
                 for x in texts['peer']
@@ -60,13 +63,13 @@ def convert(old_filename, new_filename, form_id, start_date):
                 dict(name=x['name'], content=x['body'])
                 for x in texts['negative']
             ],
-            'suggestion': {
+            'suggestion': [{
                 'content': texts['advice'][0]['body']
-            },
+            }],
         }
         conn_new.execute('INSERT INTO reports (id, user_id, form_id, json, created_at) VALUES (?, ?, ?, ?, ?)',
             (old_report['id'], old_report['user_id'], form_id, json.dumps(content), old_report['created_at']))
 
 
 if __name__ == '__main__':
-    convert('data/old.db', 'data/report.db', 4, '2017-01-01')
+    convert('data/old.db', 'data/report.db', 1, '2017-01-01')

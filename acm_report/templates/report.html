@@ -16,17 +16,13 @@
   <h2>{{ loop.index }}. {{ section.title }}</h2>
   <dl class="dl-horizontal">
   {% if section.id in report %}
-    {% if 'repeat' in section %}
-      {% for value in report[section.id] %}
-        {{ render_fields(section.fields, value) }}
-        {% if not loop.last %}
-          <dt></dt>
-          <dd><hr></dd>
-        {% endif %}
-      {% endfor %}
-    {% else %}
-      {{ render_fields(section.fields, report[section.id]) }}
-    {% endif %}
+    {% for value in report[section.id] %}
+      {{ render_fields(section.fields, value) }}
+      {% if not loop.last %}
+        <dt></dt>
+        <dd><hr></dd>
+      {% endif %}
+    {% endfor %}
   {% endif %}
   </dl>
 {% endfor %}

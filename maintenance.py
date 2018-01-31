@@ -8,6 +8,7 @@ import copy
 import time
 import yaml
 import json
+import jinja2
 import codecs
 import hashlib
 import traceback
@@ -65,303 +66,127 @@ def add_users():
 
 
 def generate():
+    def is_empty_fields(fields):
+        if type(fields) is list:
+            return all(is_empty_fields(f) for f in fields)
+        for k, v in fields.items():
+            if v.strip():
+                return False
+        return True
+
+    def load_section_json(latest_reports, user, section):
+        section_json = json.loads(latest_reports[user.id].json)[section['id']]
+        for field in section['fields']:
+            if field['type'] == 'text':
+                for f in section_json:
+                    f[field['id']] = utils.normalize_nl(f[field['id']])
+        return section_json
+
     try:
-        year = int(sys.argv[2])
-        season = sys.argv[3]
-        if season not in ['spring', 'fall']:
-            raise
+        form_id = int(sys.argv[2])
     except:
-        print('usage: python maintenance.py generate <year> <season>')
-        print('e.g.   python maintenance.py generate %d %s' % utils.date2semester(datetime.utcnow()))
+        print('usage: python maintenance.py generate <form_id>')
         sys.exit(1)
 
-    basename = '%d%s' % (year, season)
+    form = db_session.query(Form).filter(Form.id == form_id).one()
+    config = yaml.load(form.config_yaml)
+
+    basename = '[{}]{}'.format(form.id, form.title)
     basedir = os.path.join('data', basename)
     os.mkdir(basedir)
 
-    # fetch data
-    print('fetching data...')
-    query = db_session.query(Report)
-    if season == 'fall':
-        uyear_st, uyear_ed = year-3, year
-        query = query.filter(Report.created_at >= datetime(year, 10, 1))\
-                     .filter(Report.created_at < datetime(year+1, 3, 1))
-    else:
-        uyear_st, uyear_ed = year-4, year-1
-        query = query.filter(Report.created_at >= datetime(year, 3, 1))\
-                     .filter(Report.created_at < datetime(year, 10, 1))
-    year2str = { y: ['大一', '大二', '大三', '大四'][i] for i, y in zip(xrange(0, 4), xrange(uyear_ed, uyear_st-1, -1)) }
-    reports = query.all()
-    last_report = {}
-    for r in reports:
-        last = last_report.get(r.user_id, None)
-        if not last or last.created_at < r.created_at:
-            last_report[r.user_id] = r
-    users = { y: [] for y in xrange(uyear_st, uyear_ed+1) }
-    query = db_session.query(User).filter(uyear_st <= User.year).filter(User.year <= uyear_ed)
-    texts = {}
-    for u in query.order_by(User.stuid.asc()).all():
-        users[u.year].append(u)
-        r = last_report.get(u.id, None)
-        if r:
-            texts[r.id] = load_report_texts(r)
+    latest_reports = {}
+    for r in db_session.query(Report).filter(Report.form_id == form_id):
+        if r.user_id not in latest_reports or latest_reports[r.user_id].created_at < r.created_at:
+            latest_reports[r.user_id] = r
+    users = {r.id: r for r in db_session.query(User).filter(User.id.in_(latest_reports.keys()))}
 
-    # 整份小结
-    print('generating full text...')
-    dirname = os.path.join(basedir, '0整份小结')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        d = os.path.join(dirname, 'ACM%d%s' % (y, year2str[y]))
-        os.mkdir(d)
-        for u in users[y]:
-            r = last_report.get(u.id, None)
-            if not r:
-                continue
-            t = texts[r.id]
-            with codecs.open(os.path.join(d, '%s.txt' % u.name), 'w', 'utf-8') as f:
-                f.write('# ACM%d-%s %s\n\n' % (u.year, u.name, utils.semester_name(year, season)))
+    for section_index, section in enumerate(config['sections'], start=1):
+        print(section['title'])
+        ctx_section = {'index': section_index, 'title': section['title']}
+        for report_config in section['reports']:
+            dirname = unicode(report_config['directory']).format(section=ctx_section)
+            dirname = os.path.join(basedir, dirname)
+            os.mkdir(dirname)
+            template = jinja2.Template(report_config['tostring'])
 
-                f.write('## 1. 正文部分\n\n')
-                try:
-                    f.write(t['article'][0]['title'] + '\n\n')
-                    f.write(utils.normalize_nl(t['article'][0]['body']) + '\n\n')
-                except:
-                    pass
-
-                f.write('## 2. 课程评价\n\n')
-                try:
-                    for x in t['course']:
-                        f.write('### %s - %s\n\n' % (x['course'], x['teacher']))
-                        f.write(utils.normalize_nl(x['body']) + '\n\n')
-                except:
-                    pass
-
-                f.write('## 3. 助教评价\n\n')
-                try:
-                    for x in t['ta']:
-                        f.write('### %s - %s\n\n' % (x['course'], x['ta']))
-                        f.write(utils.normalize_nl(x['body']) + '\n\n')
-                except:
-                    pass
-
-                f.write('## 4. 助教工作小结\n\n')
-                try:
-                    f.write(utils.normalize_nl(t['teach'][0]['body']) + '\n\n')
-                except:
-                    pass
-
-                # f.write('## 5. 实验室实习小结\n\n')
-                # try:
-                #     f.write(utils.normalize_nl(t['lab'][0]['body']) + '\n\n')
-                # except:
-                #     pass
-
-                f.write('## 5. 同学评价\n\n')
-                try:
-                    for x in t['peer']:
-                        f.write('### %s\n\n' % x['name'])
-                        f.write(utils.normalize_nl(x['body']) + '\n\n')
-                except:
-                    pass
-
-                f.write('## 6. 同学好评\n\n')
-                try:
-                    for x in t['positive']:
-                        f.write('### %s\n\n' % x['name'])
-                        f.write(utils.normalize_nl(x['body']) + '\n\n')
-                except:
-                    pass
-
-                f.write('## 7. 同学差评\n\n')
-                try:
-                    for x in t['negative']:
-                        f.write('### %s\n\n' % x['name'])
-                        f.write(utils.normalize_nl(x['body']) + '\n\n')
-                except:
-                    pass
-
-                f.write('## 8. 班级建议\n\n')
-                try:
-                    f.write(utils.normalize_nl(t['advice'][0]['body']) + '\n\n')
-                except:
-                    pass
-
-    # 1. 正文部分
-    print('generating articles...')
-    dirname = os.path.join(basedir, '1正文部分')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        d = os.path.join(dirname, 'ACM%d%s' % (y, year2str[y]))
-        os.mkdir(d)
-        for u in users[y]:
-            r = last_report.get(u.id, None)
-            if not r: continue
-            t = texts[r.id]
-            try:
-                title = t['article'][0]['title']
-                body = t['article'][0]['body']
-                if title and body:
-                    with codecs.open(os.path.join(d, '%s.txt' % u.name), 'w', 'utf-8') as f:
-                        f.write('## %s\n\n' % title)
-                        f.write(utils.normalize_nl(body))
-            except:
-                print('error when dealing with ACM%d-%s' % (u.year, u.name))
-                traceback.print_exc()
-
-    # 2. 课程评价
-    print('generating courses...')
-    dirname = os.path.join(basedir, '2课程评价')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        with codecs.open(os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y])), 'w', 'utf-8') as f:
-            for u in users[y]:
-                r = last_report.get(u.id, None)
-                if not r: continue
-                t = texts[r.id]
-                try:
-                    if t['course']:
-                        f.write('## ACM%d-%s\n\n' % (u.year, u.name))
-                        for x in t['course']:
-                            f.write('### %s - %s\n\n' % (x['course'], x['teacher']))
-                            f.write(utils.normalize_nl(x['body']) + '\n\n')
-                        f.write('\n\n\n')
-                except:
-                    print('error when dealing with ACM%d-%s' % (u.year, u.name))
-                    traceback.print_exc()
-
-    # 3. 助教评价
-    print('generating TAs...')
-    dirname = os.path.join(basedir, '3助教评价')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        with codecs.open(os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y])), 'w', 'utf-8') as f:
-            for u in users[y]:
-                r = last_report.get(u.id, None)
-                if not r: continue
-                t = texts[r.id]
-                try:
-                    if t['ta']:
-                        f.write('## ACM%d-%s\n\n' % (u.year, u.name))
-                        for x in t['ta']:
-                            f.write('### %s - %s\n\n' % (x['course'], x['ta']))
-                            f.write(utils.normalize_nl(x['body']) + '\n\n')
-                        f.write('\n\n\n')
-                except:
-                    print('error when dealing with ACM%d-%s' % (u.year, u.name))
-                    traceback.print_exc()
-
-    # 4. 助教工作小结
-    print('generating teachings...')
-    dirname = os.path.join(basedir, '4助教工作小结')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        for u in users[y]:
-            try:
-                r = last_report.get(u.id, None)
-                t = texts[r.id]
-                body = t['teach'][0]['body']
-                with codecs.open(os.path.join(dirname, 'ACM%d-%s.txt' % (u.year, u.name)), 'w', 'utf-8') as f:
-                    f.write(utils.normalize_nl(body))
-            except:
-                pass
-
-    # # 5. 实验室实习小结
-    # print('generating labs...')
-    # dirname = os.path.join(basedir, '5实验室实习小结')
-    # os.mkdir(dirname)
-    # for y in xrange(uyear_st, uyear_ed+1):
-    #     filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
-    #     with codecs.open(filename, 'w', 'utf-8') as f:
-    #         for u in users[y]:
-    #             r = last_report.get(u.id, None)
-    #             if not r: continue
-    #             t = texts[r.id]
-    #             try:
-    #                 body = t['lab'][0]['body']
-    #                 if body:
-    #                     f.write('## ACM%d-%s\n\n' % (u.year, u.name))
-    #                     f.write(utils.normalize_nl(body) + '\n\n\n\n')
-    #             except:
-    #                 print('error when dealing with ACM%d-%s' % (u.year, u.name))
-    #                 traceback.print_exc()
-
-    # peer/positive/negative review
-    print('building peer/positive/negative review map...')
-    review_types = ['peer', 'positive', 'negative']
-    review_name = ['同学评价', '同学好评', '同学差评']
-    review = { k: {} for k in review_types }
-    for y in xrange(uyear_st, uyear_ed+1):
-        for k in review_types:
-            review[k][y] = {}
-        for u in users[y]:
-            r = last_report.get(u.id, None)
-            if not r: continue
-            t = texts[r.id]
-            try:
-                for k in review_types:
-                    for x in t[k]:
-                        key = x['name']
-                        if key not in review[k][y]:
-                            review[k][y][key] = []
-                        review[k][y][key].append({ 'from': u.name, 'body': x['body'] })
-            except:
-                print('error when dealing with ACM%d-%s' % (u.year, u.name))
-                traceback.print_exc()
-
-    for i, (k, kname) in enumerate(zip(review_types, review_name)):
-        print('generating %s reviews...' % k)
-        dirname = os.path.join(basedir, '%d%s' % (i+5, kname))
-        os.mkdir(dirname)
-        for y in xrange(uyear_st, uyear_ed+1):
-            filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
-            with codecs.open(filename, 'w', 'utf-8') as f:
-                rs = review[k][y]
-                for name, reviews in rs.iteritems():
-                    if reviews:
-                        f.write('## %s\n\n' % name)
-                        for r in reviews:
-                            f.write('### 来自%s的%s\n' % (r['from'], kname))
-                            f.write(utils.normalize_nl(r['body']) + '\n\n')
-                        f.write('\n\n\n')
-
-    # 9. 班级建议
-    print('generating labs...')
-    dirname = os.path.join(basedir, '8班级建议')
-    os.mkdir(dirname)
-    for y in xrange(uyear_st, uyear_ed+1):
-        filename = os.path.join(dirname, 'ACM%d%s.txt' % (y, year2str[y]))
-        with codecs.open(filename, 'w', 'utf-8') as f:
-            for u in users[y]:
-                r = last_report.get(u.id, None)
-                if not r: continue
-                t = texts[r.id]
-                try:
-                    body = t['advice'][0]['body']
-                    if body:
-                        f.write('## ACM%d-%s\n\n' % (u.year, u.name))
-                        f.write(utils.normalize_nl(body) + '\n\n\n\n')
-                except:
-                    print('error when dealing with ACM%d-%s' % (u.year, u.name))
-                    traceback.print_exc()
+            if report_config['file_by'] == 'per_student':
+                for u in users.values():
+                    section_json = load_section_json(latest_reports, u, section)
+                    if is_empty_fields(section_json):
+                        continue
+                    filename = 'ACM{}-{}.txt'.format(u.year, u.name)
+                    with io.open(os.path.join(dirname, filename), 'w', encoding='utf-8') as f:
+                        f.write(template.render(student=u.__dict__,
+                                                section=ctx_section,
+                                                fields=section_json))
 
 
-    # finalize
-    print('cleaning zero byte files...')
-    os.system('find %s -type f -size 0 -exec rm {} \;' % basedir)
+            elif report_config['file_by'] == 'per_class':
+                for year in config['students']:
+                    students = []
+                    for u in users.values():
+                        if u.year != year:
+                            continue
+                        d = copy.deepcopy(u.__dict__)
+                        section_json = load_section_json(latest_reports, u, section)
+                        if is_empty_fields(section_json):
+                            continue
+                        d['fields'] = section_json
+                        students.append(d)
+
+                    reductions = {}
+                    for var_name, kv in report_config.get('reductions', {}).items():
+                        key_template = unicode(kv['key'])
+                        value_template = unicode(kv['value'])
+                        d = {}
+                        for u in users.values():
+                            if u.year != year:
+                                continue
+                            section_json = load_section_json(latest_reports, u, section)
+                            for fields in section_json:
+                                if is_empty_fields(fields):
+                                    continue
+                                key = key_template.format(fields=fields, section=ctx_section, student=u.__dict__)
+                                value = value_template.format(fields=fields, section=ctx_section, student=u.__dict__)
+                                if key not in d:
+                                    d[key] = []
+                                d[key].append(value)
+                        reductions[var_name] = d
+
+                    filename = 'ACM{}.txt'.format(year)
+                    with io.open(os.path.join(dirname, filename), 'w', encoding='utf-8') as f:
+                        f.write(template.render(students=students,
+                                                section=ctx_section,
+                                                reductions=reductions))
+            else:
+                assert False, 'unknown file_by field: ' + report_config['file_by']
+
     print('converting to CRLF...')
-    os.system('find %s -type f -exec unix2dos {} \;' % basedir)
+    os.system(('find %s -type f -exec unix2dos {} \;' % basedir).encode('utf-8'))
     print('archiving...')
-    os.system('7z a data/%s.7z %s' % (basename, basedir))
+    os.system(('7z a data/%s.7z %s' % (basename, basedir)).encode('utf-8'))
     filename = os.path.join(basedir, 'packed_' + basename + '.7z')
-    os.system('mv data/%s.7z %s' % (basename, filename))
+    os.system(('mv data/%s.7z %s' % (basename, filename)).encode('utf-8'))
     print('done!')
     print('saved  at', basedir)
     print('packed at', filename)
 
 
-def validate_form(config):
+def flatten_deepcopy(config):
+    if type(config) is dict:
+        return {k: flatten_deepcopy(v) for k, v in config.iteritems()}
+    elif type(config) is list:
+        return [flatten_deepcopy(v) for v in config]
+    elif type(config) is set:
+        return set(flatten_deepcopy(v) for v in config)
+    else:
+        return copy.copy(config)
+
+
+def validate_form(config, debug_print):
     is_jinja = re.compile(r'({{.*?}})|({%.*?%})')
-    config = copy.deepcopy(config)
+    config = flatten_deepcopy(config)
 
     title = config.pop('title')
     assert type(title) in [str, unicode]
@@ -383,6 +208,7 @@ def validate_form(config):
         title = section.pop('title')
         assert type(title) in [str, unicode]
         id = section.pop('id')
+        debug_print(0, 'enter section', id)
         assert type(id) in [str, unicode]
         assert id not in section_ids
         section_ids.append(id)
@@ -403,6 +229,7 @@ def validate_form(config):
         for field in fields:
             assert type(field) is dict
             id = field.pop('id')
+            debug_print(4, 'enter field', id)
             assert type(id) in [str, unicode]
             assert id not in field_ids
             field_ids.append(id)
@@ -414,6 +241,7 @@ def validate_form(config):
             label = field.pop('label')
             assert type(label) in [str, unicode]
             assert not field
+            debug_print(4, 'exit field')
         assert len(field_ids) == len(fields)
 
         if repeat:
@@ -422,6 +250,7 @@ def validate_form(config):
             assert not repeat
 
         for report in reports:
+            debug_print(4, 'enter report')
             assert type(report) is dict
             file_by = report.pop('file_by')
             assert file_by in ['per_student', 'per_class']
@@ -433,7 +262,9 @@ def validate_form(config):
             if 'reductions' in report:
                 reductions = report.pop('reductions')
                 assert type(reductions) is dict
-                for reduction in reductions.values():
+                for name, reduction in reductions.items():
+                    debug_print(8, 'enter reduction', name)
+                    assert type(name) in [str, unicode]
                     assert type(reduction) is dict
                     key = reduction.pop('key')
                     assert not is_jinja.match(key)
@@ -442,14 +273,21 @@ def validate_form(config):
                     assert type(value) in [str, unicode]
                     assert not is_jinja.match(value)
                     assert not reduction
+                    debug_print(8, 'exit reduction')
             assert not report
+            debug_print(4, 'exit report')
+        debug_print(0, 'exit section')
 
 
-def set_form(filename, form):
+def set_form(filename, form, debug):
+    def debug_print(indent, *args, **kwargs):
+        if debug:
+            print(' '*indent, *args, **kwargs)
+
     with io.open(filename, 'r', encoding='utf-8') as f:
         config_str = f.read()
     config = yaml.load(config_str)
-    validate_form(config)
+    validate_form(config, debug_print)
 
     form.title = config['title']
     form.start_time = config['start_time']
@@ -461,20 +299,20 @@ def set_form(filename, form):
 
 
 def add_form():
-    if len(sys.argv) != 3:
-        print('usage: python maintenance.py add_form <path to yaml>')
+    if len(sys.argv) not in [3, 4]:
+        print('usage: python maintenance.py add_form <path to yaml> [--debug]')
         sys.exit(1)
     form = Form()
-    set_form(sys.argv[2], form)
+    set_form(sys.argv[2], form, len(sys.argv) == 4)
 
 
 def update_form():
-    if len(sys.argv) != 4:
-        print('usage: python maintenance.py update_form <form_id> <path to yaml>')
+    if len(sys.argv) not in [4, 5]:
+        print('usage: python maintenance.py update_form <form_id> <path to yaml> [--debug]')
         sys.exit(1)
     form_id = int(sys.argv[2])
     form = db_session.query(Form).filter(Form.id == form_id).one()
-    set_form(sys.argv[3], form)
+    set_form(sys.argv[3], form, len(sys.argv) == 5)
 
 
 if __name__ == '__main__':
