@@ -66,6 +66,7 @@ def generate(form_id):
             latest_reports[r.user_id] = r
     users = {r.id: r for r in db.session.query(User).filter(User.id.in_(latest_reports.keys()))}
 
+    # each section
     for section_index, section in enumerate(config['sections'], start=1):
         print(section['title'])
         ctx_section = {'index': section_index, 'title': section['title']}
@@ -272,3 +273,72 @@ def update_form(form_id, filename, debug):
     form_id = int(form_id)
     form = db.session.query(Form).filter(Form.id == form_id).one()
     set_form(filename, form, debug)
+
+
+
+def hack_reviews(form_id):
+    def is_empty_fields(fields):
+        if type(fields) is list:
+            return all(is_empty_fields(f) for f in fields)
+        for k, v in fields.items():
+            if v.strip():
+                return False
+        return True
+
+    def load_section_json(latest_reports, user, section):
+        section_json = json.loads(latest_reports[user.id].json)[section['id']]
+        for field in section['fields']:
+            if field['type'] == 'text':
+                for f in section_json:
+                    f[field['id']] = utils.normalize_nl(f[field['id']])
+        return section_json
+
+    form = db.session.query(Form).filter(Form.id == form_id).one()
+    config = yaml.load(form.config_yaml)
+
+    basename = '[{}]{}评价汇总'.format(form.id, form.title)
+    basedir = os.path.join('data', basename)
+    os.mkdir(basedir)
+
+    latest_reports = {}
+    for r in db.session.query(Report).filter(Report.form_id == form_id):
+        if r.user_id not in latest_reports or latest_reports[r.user_id].created_at < r.created_at:
+            latest_reports[r.user_id] = r
+    users = {r.id: r for r in db.session.query(User).filter(User.id.in_(latest_reports.keys()))}
+
+    section_dict = {d['id']: d for d in config['sections']}
+    review_types = ['peer_review', 'positive_review', 'negative_review']
+    for year in config['students']:
+        reviews_given_to_student = {}
+        name2email = {}
+        for u in users.values():
+            if u.year != year:
+                continue
+            for review_type in review_types:
+                section_json = load_section_json(latest_reports, u, section_dict[review_type])
+                for record in section_json:
+                    name = record['name']
+                    if name not in reviews_given_to_student:
+                        reviews_given_to_student[name] = {t: [] for t in review_types}
+                    reviews_given_to_student[name][review_type].append(record['content'])
+            name2email[u.name] = u.email
+
+        filename = 'ACM{}.txt'.format(year)
+        with open(os.path.join(basedir, filename), 'w', encoding='utf-8') as f:
+            f.write('ACM{} {}评价汇总\n\n'.format(year, form.title))
+            for name, reviews in reviews_given_to_student.items():
+                f.write('\n\n\n\n{}\n{} {}\n'.format('―'*50, name, name2email.get(name, '（姓名填写有误）')))
+                for review_type in review_types:
+                    f.write('\n\n\n  ―――――收到的{}―――――\n'.format(section_dict[review_type]['title']))
+                    for review in reviews[review_type]:
+                        f.write(review.strip())
+                        f.write('\n―――\n')
+    print('converting to CRLF...')
+    os.system('find %s -type f -exec unix2dos {} \;' % basedir)
+    print('archiving...')
+    os.system('7z a data/%s.7z %s' % (basename, basedir))
+    filename = os.path.join(basedir, 'packed_' + basename + '.7z')
+    os.system('mv data/%s.7z %s' % (basename, filename))
+    print('done!')
+    print('saved  at', basedir)
+    print('packed at', filename)

@@ -63,4 +63,9 @@ def create_app(config=None):
     def update_form(form_id, filename, debug):
         cli_actions.update_form(form_id, filename, debug)
 
+    @app.cli.command()
+    @click.argument('form_id')
+    def hack_reviews(form_id):
+        cli_actions.hack_reviews(form_id)
+
     return app
