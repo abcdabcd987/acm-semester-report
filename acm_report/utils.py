@@ -27,3 +27,6 @@ def normalize_nl(text):
 
 def markdown_to_html5(text):
     return markdown.markdown(text, output_format='html5')
+
+def is_super_user(stuid):
+    return stuid and stuid in Settings.SUPER_USERS

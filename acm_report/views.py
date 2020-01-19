@@ -27,6 +27,11 @@ def login_required(f):
     return decorated_function
 
 
+def is_super_user():
+    stuid = session.get('user_stuid', None)
+    return utils.is_super_user(stuid)
+
+
 @mod.route('/')
 def get_homepage():
     forms = db.session.query(Form).order_by(Form.id.desc()).all()
@@ -111,7 +116,7 @@ def get_report_create(form_id):
     if not form:
         abort(404)
     config = yaml.load(form.config_yaml)
-    if session['user_year'] not in config['students']:
+    if session['user_year'] not in config['students'] and not is_super_user():
         abort(404)
 
     latest_report = db.session.query(Report)\
@@ -160,12 +165,15 @@ def post_report_create(form_id):
 def get_report(id):
     report = db.session.query(Report).filter(Report.id == id).first()
     form = db.session.query(Form).filter(Form.id == report.form_id).first()
-    if not report or report.user_id != session['user_id'] or not form:
+    if not report or (report.user_id != session['user_id'] and not is_super_user()) or not form:
+        abort(404)
+    user = db.session.query(User).filter(User.id == report.user_id).first()
+    if not user:
         abort(404)
 
     config = yaml.load(form.config_yaml)
     report = json.loads(report.json)
-    return render_template('report.html', config=config, report=report)
+    return render_template('report.html', config=config, report=report, user=user)
 
 
 @mod.route('/form/<int:form_id>')
@@ -183,8 +191,8 @@ def get_form(form_id):
     user_id = session.get('user_id', None)
     for r in reports:
         last = last_report.get(r.user_id, None)
-        if not last or last < r.created_at:
-            last_report[r.user_id] = r.created_at
+        if last is None or last.created_at < r.created_at:
+            last_report[r.user_id] = r
         if user_id and r.user_id == user_id:
             my_reports.append(r)
 

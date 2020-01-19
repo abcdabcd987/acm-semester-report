@@ -21,6 +21,7 @@ def create_app(config=None):
     app.jinja_env.filters['markdown'] = utils.markdown_to_html5
     app.jinja_env.globals.update(WEBROOT=Settings.WEBROOT)
     app.jinja_env.globals.update(datetime=datetime.datetime)
+    app.jinja_env.globals.update(is_super_user=utils.is_super_user)
     app.jinja_env.globals.update(len=len)
     app.jinja_env.globals.update(max=max)
     app.jinja_env.globals.update(zip=zip)

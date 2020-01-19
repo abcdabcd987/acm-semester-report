@@ -3,7 +3,8 @@
 {% block content %}
 <div class="page-header">
   <h1>{{ config.title }}<small>提交情况</small></h1>
-  {% set can_write = config.start_time < datetime.utcnow() < config.end_time and session.user_year in config.students %}
+  {% set su = is_super_user(session.user_stuid) %}
+  {% set can_write = config.start_time < datetime.utcnow() < config.end_time and (session.user_year in config.students or su) %}
   {% if my_reports or can_write %}
   <span class="glyphicon glyphicon-file" aria-hidden="true"></span> 我的提交记录
   <ul>
@@ -31,7 +32,13 @@
         <tr>
             <td>{{ u.stuid }}</td>
             <td>{{ u.name }}</td>
-            <td>{% if u.id in reports %}{{ reports[u.id] | format_from_utc }}{% endif %}</td>
+            <td>
+              {% if u.id in reports %}
+                {% if su %}<a href="{{url_for('.get_report', id=reports[u.id].id)}}">{% endif %}
+                {{ reports[u.id].created_at | format_from_utc }}
+                {% if su %}</a>{% endif %}
+              {% endif %}
+            </td>
         </tr>
     {% endfor %}
     </tbody>

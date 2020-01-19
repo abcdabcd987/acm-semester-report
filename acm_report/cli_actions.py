@@ -23,7 +23,7 @@ def change_email(stuid, email):
 
 def add_users(filename):
     cnt = 0
-    with open(filename, 'rb') as f:
+    with open(filename, 'r') as f:
         for line in f:
             line = line.strip()
             if line.startswith('#') or not line:

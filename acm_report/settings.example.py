@@ -10,3 +10,4 @@ class Settings:
     MAIL_FROM_NAME = 'ACM班学期小结'
     MAIL_BODY = '你好，{name}！\n你正在登入ACM班学期小结，你的验证码是：\n{vericode}\n'
     MAIL_SUBJECT = 'ACM班学期小结验证邮件'
+    SUPER_USERS = ["5140309565"]
